@@ -1,0 +1,8 @@
+{
+  "name": "manager-openapi",
+  "version": "1.0.0",
+  "private": true,
+  "devDependencies": {
+    "@redocly/cli": "^1.17.0"
+  }
+}

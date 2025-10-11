@@ -1,0 +1,5 @@
+title: Manager API
+version: 1.0.0
+description: |
+  OpenAPI specification for the Manager service. The API currently exposes a health
+  check endpoint that reports the application status.
