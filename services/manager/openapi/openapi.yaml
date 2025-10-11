@@ -1,0 +1,115 @@
+openapi: 3.0.3
+info:
+  title: Manager API
+  version: 1.0.0
+  description: |
+    OpenAPI specification for the Manager service. The API currently exposes a health
+    check endpoint that reports the application status.
+servers:
+  - url: http://localhost:{port}/api
+    description: Local development server
+    variables:
+      port:
+        default: "8080"
+tags:
+  - name: Health
+    description: Endpoints that report service health
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Retrieve the API health status
+      operationId: checkHealth
+      responses:
+        '200':
+          description: Health information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthSuccessResponse'
+              examples:
+                success:
+                  summary: Successful health check
+                  value:
+                    status: success
+                    data:
+                      status: ok
+                      checked_at: 2024-01-01T00:00:00Z
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                error:
+                  summary: Error envelope
+                  value:
+                    status: error
+                    error:
+                      code: internal_error
+                      message: unexpected server error
+components:
+  schemas:
+    ResponseEnvelope:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: High-level result indicator
+        data:
+          description: Payload returned when the request succeeds
+          nullable: true
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+        meta:
+          description: Additional metadata for the response
+          nullable: true
+    ErrorBody:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - checked_at
+      properties:
+        status:
+          type: string
+          description: Health indicator value (e.g. ok)
+        checked_at:
+          type: string
+          format: date-time
+          description: Timestamp when the check was performed in UTC
+    HealthSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseEnvelope'
+        - type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - success
+            data:
+              $ref: '#/components/schemas/HealthStatus'
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseEnvelope'
+        - type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - error
+            error:
+              $ref: '#/components/schemas/ErrorBody'
