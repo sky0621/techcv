@@ -1,0 +1,13 @@
+services:
+  api:
+    image: golang:1.25
+    working_dir: /app
+    command: go run ./cmd/api
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - PORT=8080
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      - .:/app
+    restart: unless-stopped
