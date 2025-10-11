@@ -18,6 +18,7 @@ WebエンジニアのCV管理システムは、Google OAuth 2.0認証を使用�
 - 認証: Google OAuth 2.0 (golang.org/x/oauth2)
 - 環境変数管理: envconfig (github.com/vrischmann/envconfig)
 - ローカル環境変数: godotenv (github.com/joho/godotenv)
+- ログ: slog (Go標準ライブラリ)
 - タスクランナー: Makefile
 
 **Frontend:**
