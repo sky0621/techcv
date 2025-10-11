@@ -1,0 +1,34 @@
+get:
+  tags:
+    - Health
+  summary: Retrieve the API health status
+  operationId: checkHealth
+  responses:
+    '200':
+      description: Health information retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/HealthSuccessResponse.yaml
+          examples:
+            success:
+              summary: Successful health check
+              value:
+                status: success
+                data:
+                  status: ok
+                  checked_at: 2024-01-01T00:00:00Z
+    '500':
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            error:
+              summary: Error envelope
+              value:
+                status: error
+                error:
+                  code: internal_error
+                  message: unexpected server error

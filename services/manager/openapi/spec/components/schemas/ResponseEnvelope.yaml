@@ -1,0 +1,15 @@
+type: object
+required:
+  - status
+properties:
+  status:
+    type: string
+    description: High-level result indicator
+  data:
+    description: Payload returned when the request succeeds
+    nullable: true
+  error:
+    $ref: ./ErrorBody.yaml
+  meta:
+    description: Additional metadata for the response
+    nullable: true

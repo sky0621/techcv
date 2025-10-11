@@ -1,0 +1,5 @@
+url: http://localhost:{port}/api
+description: Local development server
+variables:
+  port:
+    default: "8080"

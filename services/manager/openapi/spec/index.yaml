@@ -1,0 +1,22 @@
+openapi: 3.0.3
+info:
+  $ref: ./info.yaml
+servers:
+  - $ref: ./servers/local.yaml
+tags:
+  - $ref: ./tags/health.yaml
+paths:
+  /health:
+    $ref: ./paths/health.yaml
+components:
+  schemas:
+    ResponseEnvelope:
+      $ref: ./components/schemas/ResponseEnvelope.yaml
+    ErrorBody:
+      $ref: ./components/schemas/ErrorBody.yaml
+    HealthStatus:
+      $ref: ./components/schemas/HealthStatus.yaml
+    HealthSuccessResponse:
+      $ref: ./components/schemas/HealthSuccessResponse.yaml
+    ErrorResponse:
+      $ref: ./components/schemas/ErrorResponse.yaml

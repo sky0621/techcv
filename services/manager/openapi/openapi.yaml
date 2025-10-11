@@ -10,7 +10,7 @@ servers:
     description: Local development server
     variables:
       port:
-        default: "8080"
+        default: '8080'
 tags:
   - name: Health
     description: Endpoints that report service health
@@ -35,7 +35,7 @@ paths:
                     status: success
                     data:
                       status: ok
-                      checked_at: 2024-01-01T00:00:00Z
+                      checked_at: '2024-01-01T00:00:00Z'
         '500':
           description: Unexpected server error
           content:
