@@ -1,7 +1,7 @@
 APP_NAME=api
 APP_PATH=./cmd/api
 
-.PHONY: help run build test tidy lint
+.PHONY: help run build test tidy lint generate
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## ' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "%-16s %s\n", $$1, $$2}'
@@ -20,3 +20,7 @@ tidy: ## Update go modules
 
 lint: ## Run gofmt to ensure formatting
 	gofmt -l $(shell find . -name '*.go' -not -path './vendor/*')
+
+generate: ## Generate Go sources from OpenAPI specification
+	GOCACHE=$(PWD)/.cache go run ./cmd/openapi -spec ./docs/openapi.yaml -out ./internal/interface/http/openapi/openapi.gen.go
+	rm -rf $(PWD)/.cache
