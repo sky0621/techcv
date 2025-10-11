@@ -7,7 +7,7 @@ import (
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
 
-	"github.com/vibe-kanban/backend/internal/infrastructure/logger"
+	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/logger"
 )
 
 // RequestLogger logs basic request/response information using the shared logger.

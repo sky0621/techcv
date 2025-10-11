@@ -6,8 +6,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/vibe-kanban/backend/internal/domain"
-	"github.com/vibe-kanban/backend/internal/interface/http/response"
+	"github.com/sky0621/techcv/manager/backend/internal/domain"
+	"github.com/sky0621/techcv/manager/backend/internal/interface/http/response"
 )
 
 // HealthUsecase defines the behaviour required by the handler.

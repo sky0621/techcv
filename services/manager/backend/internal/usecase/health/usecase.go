@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/vibe-kanban/backend/internal/domain"
+	"github.com/sky0621/techcv/manager/backend/internal/domain"
 )
 
 // Usecase exposes health check operations.

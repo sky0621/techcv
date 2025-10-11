@@ -7,9 +7,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 
-	"github.com/vibe-kanban/backend/internal/domain"
-	"github.com/vibe-kanban/backend/internal/infrastructure/logger"
-	"github.com/vibe-kanban/backend/internal/interface/http/response"
+	"github.com/sky0621/techcv/manager/backend/internal/domain"
+	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/logger"
+	"github.com/sky0621/techcv/manager/backend/internal/interface/http/response"
 )
 
 // ErrorHandler handles application errors and produces consistent API responses.

@@ -1,4 +1,4 @@
-module github.com/vibe-kanban/backend
+module github.com/sky0621/techcv/manager/backend
 
 go 1.25
 

@@ -11,11 +11,11 @@ import (
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
 
-	"github.com/vibe-kanban/backend/internal/infrastructure/logger"
-	"github.com/vibe-kanban/backend/internal/infrastructure/server"
-	handler "github.com/vibe-kanban/backend/internal/interface/http/handler"
-	httpmiddleware "github.com/vibe-kanban/backend/internal/interface/http/middleware"
-	"github.com/vibe-kanban/backend/internal/usecase/health"
+	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/logger"
+	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/server"
+	handler "github.com/sky0621/techcv/manager/backend/internal/interface/http/handler"
+	httpmiddleware "github.com/sky0621/techcv/manager/backend/internal/interface/http/middleware"
+	"github.com/sky0621/techcv/manager/backend/internal/usecase/health"
 )
 
 func main() {
