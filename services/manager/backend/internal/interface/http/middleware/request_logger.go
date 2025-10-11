@@ -1,17 +1,17 @@
 package middleware
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
-	"go.uber.org/zap"
 
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/logger"
 )
 
 // RequestLogger logs basic request/response information using the shared logger.
-func RequestLogger(log *zap.Logger) echo.MiddlewareFunc {
+func RequestLogger(log *slog.Logger) echo.MiddlewareFunc {
 	cfg := echomiddleware.RequestLoggerConfig{
 		LogURI:     true,
 		LogStatus:  true,
@@ -24,20 +24,20 @@ func RequestLogger(log *zap.Logger) echo.MiddlewareFunc {
 
 			if v.Error == nil {
 				entry.Info("request handled",
-					zap.String("method", v.Method),
-					zap.String("uri", v.URI),
-					zap.Int("status", v.Status),
-					zap.Duration("latency", v.Latency),
+					slog.String("method", v.Method),
+					slog.String("uri", v.URI),
+					slog.Int("status", v.Status),
+					slog.Duration("latency", v.Latency),
 				)
 				return nil
 			}
 
 			entry.Error("request failed",
-				zap.String("method", v.Method),
-				zap.String("uri", v.URI),
-				zap.Int("status", v.Status),
-				zap.Duration("latency", v.Latency),
-				zap.Error(v.Error),
+				slog.String("method", v.Method),
+				slog.String("uri", v.URI),
+				slog.Int("status", v.Status),
+				slog.Duration("latency", v.Latency),
+				slog.Any("error", v.Error),
 			)
 			return nil
 		},
