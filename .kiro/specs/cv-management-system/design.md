@@ -7,18 +7,25 @@ WebエンジニアのCV管理システムは、Google OAuth 2.0認証を使用�
 ### Technology Stack
 
 **Backend:**
-- 言語: Go 1.21+
-- Webフレームワーク: Gin
-- ORM: GORM
+- 言語: Go 1.25
+- Webフレームワーク: Echo
+- API仕様: OpenAPI 3.0.3
+- OpenAPIライブラリ: kin-openapi (github.com/getkin/kin-openapi)
+- コード生成: oapi-codegen (github.com/oapi-codegen/oapi-codegen)
+- データベースアクセス: sqlc
+- データベースマイグレーション: sqldef
 - データベース: MySQL 8.0+
 - 認証: Google OAuth 2.0 (golang.org/x/oauth2)
+- 環境変数管理: envconfig (github.com/vrischmann/envconfig)
+- ローカル環境変数: godotenv (github.com/joho/godotenv)
+- タスクランナー: Makefile
 
 **Frontend:**
 - フレームワーク: React 18+ with TypeScript
-- UIライブラリ: Material-UI (MUI)
-- 状態管理: React Query + Context API
-- ルーティング: React Router v6
-- HTTPクライアント: Axios
+- UIライブラリ: shadcn/ui
+- 状態管理: Jotai
+- ルーティング: TanStack Router
+- HTTPクライアント: ky (github.com/sindresorhus/ky)
 
 **Infrastructure:**
 - コンテナ: Docker
@@ -26,7 +33,6 @@ WebエンジニアのCV管理システムは、Google OAuth 2.0認証を使用�
 - クラウド: Google Cloud Platform (本番環境)
   - Cloud Run (アプリケーション)
   - Cloud SQL (MySQL)
-  - Cloud Storage (ファイル保存)
 
 ## Architecture
 
@@ -38,7 +44,6 @@ graph TB
     LB --> Frontend[React Frontend]
     Frontend --> API[Go Backend API]
     API --> DB[(MySQL Database)]
-    API --> Storage[Cloud Storage]
     API --> OAuth[Google OAuth 2.0]
     
     subgraph "Backend Services"
@@ -95,10 +100,10 @@ graph TB
 ```go
 // Domain Entity
 type User struct {
-    ID            string    `gorm:"primaryKey"`
-    Email         string    `gorm:"uniqueIndex;not null"`
-    Name          string    `gorm:"not null"`
-    GoogleID      string    `gorm:"uniqueIndex;not null"`
+    ID            string
+    Email         string
+    Name          string
+    GoogleID      string
     ProfileImage  string
     CreatedAt     time.Time
     UpdatedAt     time.Time
@@ -129,11 +134,11 @@ type AuthUseCase interface {
 ```go
 // Domain Entities
 type CV struct {
-    ID              string    `gorm:"primaryKey"`
-    UserID          string    `gorm:"index;not null"`
-    IsPublic        bool      `gorm:"default:false"`
-    PublicURL       string    `gorm:"uniqueIndex"`
-    BasicInfo       BasicInfo `gorm:"embedded"`
+    ID              string
+    UserID          string
+    IsPublic        bool
+    PublicURL       string
+    BasicInfo       BasicInfo
     CreatedAt       time.Time
     UpdatedAt       time.Time
 }
@@ -145,78 +150,78 @@ type BasicInfo struct {
     Address        string
     DateOfBirth    time.Time
     // 各フィールドの公開設定
-    ShowEmail      bool `gorm:"default:true"`
-    ShowPhone      bool `gorm:"default:true"`
-    ShowAddress    bool `gorm:"default:true"`
-    ShowDOB        bool `gorm:"default:true"`
+    ShowEmail      bool
+    ShowPhone      bool
+    ShowAddress    bool
+    ShowDOB        bool
 }
 
 type WorkExperience struct {
-    ID             string    `gorm:"primaryKey"`
-    CVID           string    `gorm:"index;not null"`
-    CompanyName    string    `gorm:"not null"`
-    Position       string    `gorm:"not null"`
-    StartDate      time.Time `gorm:"not null"`
+    ID             string
+    CVID           string
+    CompanyName    string
+    Position       string
+    StartDate      time.Time
     EndDate        *time.Time
-    Description    string    `gorm:"type:text"`
-    Technologies   string    `gorm:"type:text"` // JSON array
-    IsPublic       bool      `gorm:"default:true"`
-    DisplayOrder   int       `gorm:"default:0"`
+    Description    string
+    Technologies   string // JSON array
+    IsPublic       bool
+    DisplayOrder   int
     CreatedAt      time.Time
     UpdatedAt      time.Time
 }
 
 type Skill struct {
-    ID             string    `gorm:"primaryKey"`
-    CVID           string    `gorm:"index;not null"`
-    Name           string    `gorm:"not null"`
-    Level          string    // Beginner, Intermediate, Advanced, Expert
+    ID             string
+    CVID           string
+    Name           string
+    Level          string // Beginner, Intermediate, Advanced, Expert
     YearsOfExp     int
-    IsPublic       bool      `gorm:"default:true"`
-    DisplayOrder   int       `gorm:"default:0"`
+    IsPublic       bool
+    DisplayOrder   int
     CreatedAt      time.Time
     UpdatedAt      time.Time
 }
 
 type Education struct {
-    ID             string    `gorm:"primaryKey"`
-    CVID           string    `gorm:"index;not null"`
-    SchoolName     string    `gorm:"not null"`
+    ID             string
+    CVID           string
+    SchoolName     string
     Degree         string
     FieldOfStudy   string
     StartDate      time.Time
     EndDate        *time.Time
-    IsPublic       bool      `gorm:"default:true"`
-    DisplayOrder   int       `gorm:"default:0"`
+    IsPublic       bool
+    DisplayOrder   int
     CreatedAt      time.Time
     UpdatedAt      time.Time
 }
 
 type Certification struct {
-    ID             string    `gorm:"primaryKey"`
-    CVID           string    `gorm:"index;not null"`
-    Name           string    `gorm:"not null"`
+    ID             string
+    CVID           string
+    Name           string
     IssuingOrg     string
     IssueDate      time.Time
     ExpiryDate     *time.Time
     CredentialID   string
-    IsPublic       bool      `gorm:"default:true"`
-    DisplayOrder   int       `gorm:"default:0"`
+    IsPublic       bool
+    DisplayOrder   int
     CreatedAt      time.Time
     UpdatedAt      time.Time
 }
 
 type Project struct {
-    ID             string    `gorm:"primaryKey"`
-    CVID           string    `gorm:"index;not null"`
-    Name           string    `gorm:"not null"`
+    ID             string
+    CVID           string
+    Name           string
     Role           string
     StartDate      time.Time
     EndDate        *time.Time
-    Description    string    `gorm:"type:text"`
-    Technologies   string    `gorm:"type:text"` // JSON array
-    IsPublic       bool      `gorm:"default:true"`
-    DisplayOrder   int       `gorm:"default:0"`
+    Description    string
+    Technologies   string // JSON array
+    IsPublic       bool
+    DisplayOrder   int
     CreatedAt      time.Time
     UpdatedAt      time.Time
 }
@@ -565,7 +570,7 @@ type AppError struct {
 - **テスト内容**:
   - ログインフロー
   - CV作成・編集フロー
-  - Excel/PDF出力フロー
+  - CV公開フロー
 
 ### Test Data Management
 
