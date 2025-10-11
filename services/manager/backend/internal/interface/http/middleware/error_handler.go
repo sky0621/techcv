@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"go.uber.org/zap"
 
 	"github.com/sky0621/techcv/manager/backend/internal/domain"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/logger"
@@ -14,11 +14,11 @@ import (
 
 // ErrorHandler handles application errors and produces consistent API responses.
 type ErrorHandler struct {
-	logger *zap.Logger
+	logger *slog.Logger
 }
 
 // NewErrorHandler creates a new ErrorHandler instance.
-func NewErrorHandler(logger *zap.Logger) *ErrorHandler {
+func NewErrorHandler(logger *slog.Logger) *ErrorHandler {
 	return &ErrorHandler{logger: logger}
 }
 
@@ -62,14 +62,14 @@ func (h *ErrorHandler) Handle(err error, c echo.Context) {
 	requestID := c.Response().Header().Get(echo.HeaderXRequestID)
 	log := logger.WithRequestID(h.logger, requestID)
 	log.Error("request failed",
-		zap.String("method", c.Request().Method),
-		zap.String("path", c.Path()),
-		zap.Int("status", status),
-		zap.String("code", code),
-		zap.Error(err),
+		slog.String("method", c.Request().Method),
+		slog.String("path", c.Path()),
+		slog.Int("status", status),
+		slog.String("code", code),
+		slog.Any("error", err),
 	)
 
 	if err := response.Failure(c, status, code, message); err != nil {
-		log.Error("failed to send error response", zap.Error(err))
+		log.Error("failed to send error response", slog.Any("error", err))
 	}
 }

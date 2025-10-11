@@ -3,21 +3,21 @@ package server
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"go.uber.org/zap"
 )
 
 // Server wraps an Echo instance and manages graceful shutdown.
 type Server struct {
 	app    *echo.Echo
-	logger *zap.Logger
+	logger *slog.Logger
 }
 
 // New constructs a new Server instance.
-func New(app *echo.Echo, logger *zap.Logger) *Server {
+func New(app *echo.Echo, logger *slog.Logger) *Server {
 	return &Server{app: app, logger: logger}
 }
 
@@ -35,7 +35,7 @@ func (s *Server) Start(ctx context.Context, addr string) error {
 		defer cancel()
 
 		if err := s.app.Shutdown(shutdownCtx); err != nil {
-			s.logger.Error("graceful shutdown failed", zap.Error(err))
+			s.logger.Error("graceful shutdown failed", slog.Any("error", err))
 			if errors.Is(err, context.DeadlineExceeded) {
 				return s.app.Close()
 			}

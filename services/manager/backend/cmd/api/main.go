@@ -9,7 +9,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
-	"go.uber.org/zap"
 
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/logger"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/server"
@@ -20,9 +19,6 @@ import (
 
 func main() {
 	log := logger.New()
-	defer func() {
-		_ = log.Sync()
-	}()
 
 	e := echo.New()
 	e.HideBanner = true
@@ -47,10 +43,11 @@ func main() {
 	defer stop()
 
 	addr := ":" + getEnv("PORT", "8080")
-	log.Info("starting server", zap.String("address", addr))
+	log.Info("starting server", "address", addr)
 
 	if err := srv.Start(ctx, addr); err != nil {
-		log.Fatal("server failed", zap.Error(err))
+		log.Error("server failed", "error", err)
+		os.Exit(1)
 	}
 }
 
