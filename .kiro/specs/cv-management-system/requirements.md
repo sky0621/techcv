@@ -2,7 +2,7 @@
 
 ## Introduction
 
-WebエンジニアのCV（履歴書）を管理するシステムです。一般ユーザーがGoogle Accountで登録し、自身のCV情報を管理できます。CV情報は項目ごとに公開可否を設定でき、Web公開、Excel出力、PDF出力が可能です。
+WebエンジニアのCV（履歴書）を管理するシステムです。一般ユーザーがGoogle Accountで登録し、自身のCV情報を管理できます。CV情報は項目ごとに公開可否を設定でき、Web画面で公開できます。
 
 ## Requirements
 
@@ -67,29 +67,4 @@ WebエンジニアのCV（履歴書）を管理するシステムです。一般
 6. WHEN ユーザーがCV公開設定を無効にする THEN システム SHALL 公開URLへのアクセスを無効化する
 7. WHEN 無効化されたURLにアクセスする THEN システム SHALL 「このCVは公開されていません」というメッセージを表示する
 
-### Requirement 5: CVのExcel出力
 
-**User Story:** 一般ユーザーとして、自身のCVをExcelファイルに出力したい。これにより、オフラインでの閲覧や編集、印刷が容易になる。
-
-#### Acceptance Criteria
-
-1. WHEN ユーザーがCV詳細画面でExcel出力ボタンをクリックする THEN システム SHALL 公開設定された項目のみを含むExcelファイルを生成する
-2. WHEN Excelファイルを生成する THEN システム SHALL 読みやすいフォーマットで情報を整形する
-3. WHEN Excelファイルを生成する THEN システム SHALL 各セクション（基本情報、職務経歴、スキル、学歴、資格、プロジェクト実績）を適切なシートまたはセクションに分割する
-4. WHEN 非公開に設定された項目がある THEN システム SHALL その項目をExcelファイルに含めない
-5. WHEN Excelファイルの生成が完了する THEN システム SHALL ファイルをダウンロードする
-6. WHEN Excelファイル名を設定する THEN システム SHALL 「CV_{ユーザー名}_{日付}.xlsx」の形式で命名する
-
-### Requirement 6: CVのPDF出力
-
-**User Story:** 一般ユーザーとして、自身のCVをPDFファイルに出力したい。これにより、プロフェッショナルな形式で履歴書を共有できる。
-
-#### Acceptance Criteria
-
-1. WHEN ユーザーがCV詳細画面でPDF出力ボタンをクリックする THEN システム SHALL 公開設定された項目のみを含むPDFファイルを生成する
-2. WHEN PDFファイルを生成する THEN システム SHALL プロフェッショナルで読みやすいレイアウトで情報を整形する
-3. WHEN PDFファイルを生成する THEN システム SHALL 各セクション（基本情報、職務経歴、スキル、学歴、資格、プロジェクト実績）を適切に配置する
-4. WHEN 非公開に設定された項目がある THEN システム SHALL その項目をPDFファイルに含めない
-5. WHEN PDFファイルの生成が完了する THEN システム SHALL ファイルをダウンロードする
-6. WHEN PDFファイル名を設定する THEN システム SHALL 「CV_{ユーザー名}_{日付}.pdf」の形式で命名する
-7. WHEN PDFファイルを生成する THEN システム SHALL 印刷に適したA4サイズのページレイアウトを使用する
