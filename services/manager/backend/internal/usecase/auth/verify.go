@@ -64,7 +64,8 @@ func NewVerifyUsecase(
 func (uc *VerifyUsecase) Execute(ctx context.Context, in VerifyInput) (VerifyOutput, error) {
 	tokenValue := strings.TrimSpace(in.Token)
 	if tokenValue == "" {
-		return VerifyOutput{}, domain.NewValidation("INVALID_VERIFICATION_TOKEN", "確認トークンを指定してください")
+		detail := domain.ErrorDetail{Field: "token", Code: "INVALID_VERIFICATION_TOKEN", Message: "確認トークンを指定してください"}
+		return VerifyOutput{}, domain.NewValidation("INVALID_VERIFICATION_TOKEN", "確認トークンを指定してください").WithDetails(detail)
 	}
 
 	record, err := uc.tokens.FindByToken(ctx, tokenValue)
@@ -78,7 +79,8 @@ func (uc *VerifyUsecase) Execute(ctx context.Context, in VerifyInput) (VerifyOut
 	now := uc.clock.Now()
 	if record.IsExpired(now) {
 		_ = uc.tokens.DeleteByToken(ctx, tokenValue)
-		return VerifyOutput{}, domain.NewValidation("VERIFICATION_TOKEN_EXPIRED", "確認リンクが無効または期限切れです。再度登録をお試しください")
+		detail := domain.ErrorDetail{Field: "token", Code: "VERIFICATION_TOKEN_EXPIRED", Message: "確認リンクが無効または期限切れです"}
+		return VerifyOutput{}, domain.NewValidation("VERIFICATION_TOKEN_EXPIRED", "確認リンクが無効または期限切れです。再度登録をお試しください").WithDetails(detail)
 	}
 
 	exists, err := uc.users.ExistsByEmail(ctx, record.Email())
@@ -87,7 +89,8 @@ func (uc *VerifyUsecase) Execute(ctx context.Context, in VerifyInput) (VerifyOut
 	}
 
 	if exists {
-		return VerifyOutput{}, domain.NewValidation("EMAIL_ALREADY_REGISTERED", "このメールアドレスは既に登録されています")
+		detail := domain.ErrorDetail{Field: "email", Code: "EMAIL_ALREADY_REGISTERED", Message: "このメールアドレスは既に登録されています"}
+		return VerifyOutput{}, domain.NewValidation("EMAIL_ALREADY_REGISTERED", "このメールアドレスは既に登録されています").WithDetails(detail)
 	}
 
 	newUser, err := user.NewUser(record.Email(), record.PasswordHash(), now)

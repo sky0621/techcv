@@ -64,7 +64,8 @@ func (uc *RegisterUsecase) Execute(ctx context.Context, in RegisterInput) (Regis
 	}
 
 	if in.Password != in.PasswordConfirmation {
-		return RegisterOutput{}, domain.NewValidation("PASSWORD_MISMATCH", "パスワードが一致しません")
+		detail := domain.ErrorDetail{Field: "password_confirmation", Code: "PASSWORD_MISMATCH", Message: "確認用パスワードが一致しません"}
+		return RegisterOutput{}, domain.NewValidation("PASSWORD_MISMATCH", "パスワードが一致しません").WithDetails(detail)
 	}
 
 	exists, err := uc.users.ExistsByEmail(ctx, email)
@@ -73,7 +74,8 @@ func (uc *RegisterUsecase) Execute(ctx context.Context, in RegisterInput) (Regis
 	}
 
 	if exists {
-		return RegisterOutput{}, domain.NewValidation("EMAIL_ALREADY_REGISTERED", "このメールアドレスは既に登録されています")
+		detail := domain.ErrorDetail{Field: "email", Code: "EMAIL_ALREADY_REGISTERED", Message: "このメールアドレスは既に登録されています"}
+		return RegisterOutput{}, domain.NewValidation("EMAIL_ALREADY_REGISTERED", "このメールアドレスは既に登録されています").WithDetails(detail)
 	}
 
 	if err := uc.tokens.DeleteByEmail(ctx, email); err != nil {

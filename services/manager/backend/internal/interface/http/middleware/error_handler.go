@@ -69,7 +69,18 @@ func (h *ErrorHandler) Handle(err error, c echo.Context) {
 		slog.Any("error", err),
 	)
 
-	if err := response.Failure(c, status, code, message); err != nil {
+	var details []response.ErrorDetail
+	if appErr != nil {
+		for _, d := range appErr.Details {
+			details = append(details, response.ErrorDetail{
+				Field:   d.Field,
+				Code:    d.Code,
+				Message: d.Message,
+			})
+		}
+	}
+
+	if err := response.Failure(c, status, requestID, code, message, details); err != nil {
 		log.Error("failed to send error response", slog.Any("error", err))
 	}
 }

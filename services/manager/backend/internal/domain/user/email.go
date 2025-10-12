@@ -17,12 +17,13 @@ type Email struct {
 // NewEmail validates and constructs an Email value object.
 func NewEmail(raw string) (Email, error) {
 	trimmed := strings.TrimSpace(raw)
+	detail := domain.ErrorDetail{Field: "email", Code: "INVALID_EMAIL_FORMAT", Message: invalidEmailMessage}
 	if trimmed == "" {
-		return Email{}, domain.NewValidation("INVALID_EMAIL_FORMAT", invalidEmailMessage)
+		return Email{}, domain.NewValidation("INVALID_EMAIL_FORMAT", invalidEmailMessage).WithDetails(detail)
 	}
 
 	if _, err := mail.ParseAddress(trimmed); err != nil {
-		return Email{}, domain.NewValidation("INVALID_EMAIL_FORMAT", invalidEmailMessage)
+		return Email{}, domain.NewValidation("INVALID_EMAIL_FORMAT", invalidEmailMessage).WithDetails(detail)
 	}
 
 	normalized := strings.ToLower(trimmed)

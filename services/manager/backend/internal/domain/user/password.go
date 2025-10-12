@@ -18,7 +18,8 @@ type Password struct {
 // NewPassword validates the given raw password against domain rules.
 func NewPassword(raw string) (Password, error) {
 	if len(raw) < 8 {
-		return Password{}, domain.NewValidation("INVALID_PASSWORD", invalidPasswordMessage)
+		detail := domain.ErrorDetail{Field: "password", Code: "INVALID_PASSWORD", Message: invalidPasswordMessage}
+		return Password{}, domain.NewValidation("INVALID_PASSWORD", invalidPasswordMessage).WithDetails(detail)
 	}
 
 	var hasLetter, hasDigit bool
@@ -32,7 +33,8 @@ func NewPassword(raw string) (Password, error) {
 	}
 
 	if !hasLetter || !hasDigit {
-		return Password{}, domain.NewValidation("INVALID_PASSWORD", invalidPasswordMessage)
+		detail := domain.ErrorDetail{Field: "password", Code: "INVALID_PASSWORD", Message: invalidPasswordMessage}
+		return Password{}, domain.NewValidation("INVALID_PASSWORD", invalidPasswordMessage).WithDetails(detail)
 	}
 
 	return Password{value: raw}, nil

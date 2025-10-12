@@ -11,6 +11,14 @@ type AppError struct {
 	Message    string
 	StatusCode int
 	Err        error
+	Details    []ErrorDetail
+}
+
+// ErrorDetail represents a granular validation error component.
+type ErrorDetail struct {
+	Field   string
+	Code    string
+	Message string
 }
 
 // Error implements the error interface.
@@ -30,6 +38,15 @@ func (e *AppError) Unwrap() error {
 		return nil
 	}
 	return e.Err
+}
+
+// WithDetails attaches detailed validation information to the error.
+func (e *AppError) WithDetails(details ...ErrorDetail) *AppError {
+	if e == nil {
+		return nil
+	}
+	e.Details = append(e.Details, details...)
+	return e
 }
 
 // NewNotFound returns a new not found error.
