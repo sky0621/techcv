@@ -5,6 +5,7 @@ const config: Config = {
   testEnvironment: 'jsdom',
   moduleDirectories: ['node_modules', 'src'],
   moduleNameMapper: {
+    '^@/lib/env$': '<rootDir>/src/lib/env.jest.ts',
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(css|less|scss|sass)$': '<rootDir>/testing/__mocks__/styleMock.ts'
   },
