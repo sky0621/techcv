@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type document struct {
@@ -108,7 +110,9 @@ func main() {
 
 	var doc document
 	if err := json.Unmarshal(content, &doc); err != nil {
-		fatalf("parse spec: %v", err)
+		if err := yaml.Unmarshal(content, &doc); err != nil {
+			fatalf("parse spec: %v", err)
+		}
 	}
 
 	gen := newGenerator(doc)

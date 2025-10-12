@@ -3,10 +3,10 @@ info:
   title: Manager API
   version: 1.0.0
   description: |
-    OpenAPI specification for the Manager service. The API currently exposes a health
-    check endpoint that reports the application status.
+    OpenAPI specification for the Manager service. The API exposes endpoints for
+    checking service health and handling guest registration via email verification.
 servers:
-  - url: http://localhost:{port}/api
+  - url: http://localhost:{port}/techcv/api/v1
     description: Local development server
     variables:
       port:
@@ -14,6 +14,8 @@ servers:
 tags:
   - name: Health
     description: Endpoints that report service health
+  - name: Auth
+    description: Endpoints for registering and verifying users
 paths:
   /health:
     get:
@@ -42,14 +44,85 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                error:
-                  summary: Error envelope
-                  value:
-                    status: error
-                    error:
-                      code: internal_error
-                      message: unexpected server error
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Initiate email based registration
+      operationId: registerUser
+      description: |
+        Registers a guest using an email address and password. A verification email
+        with a confirmation link is sent to the provided address. Registration is
+        completed after the link is opened within the expiration window.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: Verification email dispatched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterSuccessResponse'
+        '400':
+          description: Invalid input supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/verify:
+    post:
+      tags:
+        - Auth
+      summary: Verify registration token and create account
+      operationId: verifyRegistration
+      description: Validates a verification token and finalizes user registration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+      responses:
+        '200':
+          description: User verified and authenticated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifySuccessResponse'
+        '400':
+          description: Invalid or expired verification token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Verification token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     ResponseEnvelope:
@@ -63,21 +136,44 @@ components:
         data:
           description: Payload returned when the request succeeds
           nullable: true
-        error:
-          $ref: '#/components/schemas/ErrorBody'
         meta:
           description: Additional metadata for the response
           nullable: true
-    ErrorBody:
+    ErrorDetail:
       type: object
-      required:
-        - code
-        - message
       properties:
+        field:
+          type: string
         code:
           type: string
         message:
           type: string
+    ErrorBody:
+      type: object
+      required:
+        - requestId
+      properties:
+        requestId:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseEnvelope'
+        - type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - error
+            error:
+              $ref: '#/components/schemas/ErrorBody'
     HealthStatus:
       type: object
       required:
@@ -102,7 +198,39 @@ components:
                 - success
             data:
               $ref: '#/components/schemas/HealthStatus'
-    ErrorResponse:
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - password_confirmation
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email address used for registration
+        password:
+          type: string
+          minLength: 8
+          description: Password containing both letters and digits
+        password_confirmation:
+          type: string
+          minLength: 8
+          description: Password confirmation; must match password
+    RegisterSuccessData:
+      type: object
+      required:
+        - message
+        - expires_at
+      properties:
+        message:
+          type: string
+          description: Confirmation message for the guest
+        expires_at:
+          type: string
+          format: date-time
+          description: Expiration timestamp for the verification token in UTC
+    RegisterSuccessResponse:
       allOf:
         - $ref: '#/components/schemas/ResponseEnvelope'
         - type: object
@@ -110,6 +238,76 @@ components:
             status:
               type: string
               enum:
-                - error
-            error:
-              $ref: '#/components/schemas/ErrorBody'
+                - success
+            data:
+              $ref: '#/components/schemas/RegisterSuccessData'
+    VerifyRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: Verification token received via email
+    AuthenticatedUser:
+      type: object
+      required:
+        - id
+        - email
+        - is_active
+        - email_verified_at
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        email_verified_at:
+          type: string
+          format: date-time
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    VerifySuccessData:
+      type: object
+      required:
+        - message
+        - auth_token
+        - user
+      properties:
+        message:
+          type: string
+        auth_token:
+          type: string
+          description: Token representing the authenticated session
+        user:
+          $ref: '#/components/schemas/AuthenticatedUser'
+    VerifySuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseEnvelope'
+        - type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - success
+            data:
+              $ref: '#/components/schemas/VerifySuccessData'
