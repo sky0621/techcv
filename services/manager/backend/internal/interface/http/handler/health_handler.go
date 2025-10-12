@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/sky0621/techcv/manager/backend/internal/domain"
-	"github.com/sky0621/techcv/manager/backend/internal/interface/http/response"
+	openapi "github.com/sky0621/techcv/manager/backend/internal/interface/http/openapi"
 )
 
 // HealthUsecase defines the behaviour required by the handler.
@@ -27,13 +27,23 @@ func NewHealthHandler(uc HealthUsecase) *HealthHandler {
 
 // Register wires the health endpoints on the provided Echo instance.
 func (h *HealthHandler) Register(router *echo.Group) {
-	router.GET("/health", h.check)
+	openapi.RegisterHandlers(router, h)
 }
 
-func (h *HealthHandler) check(c echo.Context) error {
+// GetHealth implements the OpenAPI contract for the health endpoint.
+func (h *HealthHandler) GetHealth(c echo.Context) error {
 	status, err := h.usecase.Check(c.Request().Context())
 	if err != nil {
 		return err
 	}
-	return response.Success(c, http.StatusOK, status)
+
+	response := openapi.HealthResponseEnvelope{
+		Status: "success",
+		Data: openapi.HealthStatus{
+			Status:    status.Status,
+			CheckedAt: status.CheckedAt,
+		},
+	}
+
+	return c.JSON(http.StatusOK, response)
 }
