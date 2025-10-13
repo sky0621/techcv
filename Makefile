@@ -1,18 +1,22 @@
-BACKEND_DIR := services/manager/backend
-OPENAPI_DIR := services/manager/openapi
-FRONTEND_DIR := services/manager/frontend
-
+SERVICES := manager publisher administrator
 BACKEND_TARGETS := run build test tidy lint generate-openapi help
-OPENAPI_TARGETS := install-redocly bundle-openapi clean
 FRONTEND_TARGETS := install vite-install dev build preview lint test
+OPENAPI_TARGETS := install-redocly bundle-openapi clean
 
-.PHONY: $(addprefix backend-,$(BACKEND_TARGETS)) $(addprefix openapi-,$(OPENAPI_TARGETS)) $(addprefix frontend-,$(FRONTEND_TARGETS))
+.PHONY: $(foreach svc,$(SERVICES),$(foreach tgt,$(BACKEND_TARGETS),$(svc)-be-$(tgt))) \
+        $(foreach svc,$(SERVICES),$(foreach tgt,$(FRONTEND_TARGETS),$(svc)-fe-$(tgt))) \
+        openapi-$(OPENAPI_TARGETS)
 
-$(addprefix backend-,$(BACKEND_TARGETS)):
-	$(MAKE) -C $(BACKEND_DIR) $(@:backend-%=%)
+$(foreach svc,$(SERVICES),$(foreach tgt,$(BACKEND_TARGETS),$(svc)-be-$(tgt))):
+	$(eval SERVICE := $(word 1,$(subst -, ,$@)))
+	$(eval TARGET := $(word 3,$(subst -, ,$@)))
+	$(MAKE) -C services/$(SERVICE)/backend $(TARGET)
 
-$(addprefix openapi-,$(OPENAPI_TARGETS)):
-	$(MAKE) -C $(OPENAPI_DIR) $(@:openapi-%=%)
+$(foreach svc,$(SERVICES),$(foreach tgt,$(FRONTEND_TARGETS),$(svc)-fe-$(tgt))):
+	$(eval SERVICE := $(word 1,$(subst -, ,$@)))
+	$(eval TARGET := $(word 3,$(subst -, ,$@)))
+	$(MAKE) -C services/$(SERVICE)/frontend $(TARGET)
 
-$(addprefix frontend-,$(FRONTEND_TARGETS)):
-	$(MAKE) -C $(FRONTEND_DIR) $(@:frontend-%=%)
+# manager-specific openapi commands remain available
+openapi-%:
+	$(MAKE) -C services/manager/openapi $(@:openapi-%=%)
