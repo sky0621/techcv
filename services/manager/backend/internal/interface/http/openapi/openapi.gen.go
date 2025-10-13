@@ -3,8 +3,9 @@
 package openapi
 
 import (
-	"github.com/labstack/echo/v4"
 	"time"
+
+	"github.com/labstack/echo/v4"
 )
 
 type AuthenticatedUser struct {
@@ -56,6 +57,7 @@ type RegisterSuccessResponse interface{}
 
 type ResponseEnvelope struct {
 	Data   *interface{} `json:"data"`
+	Error  *interface{} `json:"error"`
 	Meta   *interface{} `json:"meta"`
 	Status string       `json:"status"`
 }
