@@ -10,11 +10,22 @@ import (
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 
+	authinfra "github.com/sky0621/techcv/manager/backend/internal/infrastructure/auth"
+	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/clock"
+	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/email"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/logger"
+	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/persistence/memory"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/server"
+	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/transaction"
 	handler "github.com/sky0621/techcv/manager/backend/internal/interface/http/handler"
 	httpmiddleware "github.com/sky0621/techcv/manager/backend/internal/interface/http/middleware"
+	"github.com/sky0621/techcv/manager/backend/internal/usecase/auth"
 	"github.com/sky0621/techcv/manager/backend/internal/usecase/health"
+)
+
+const (
+	requestTimeout        = 30 * time.Second
+	defaultVerificationTTL = 24 * time.Hour
 )
 
 func main() {
@@ -29,13 +40,28 @@ func main() {
 
 	e.Use(echomiddleware.RequestID())
 	e.Use(echomiddleware.Recover())
-	e.Use(httpmiddleware.Timeout(30 * time.Second))
+	e.Use(httpmiddleware.Timeout(requestTimeout))
 	e.Use(httpmiddleware.RequestLogger(log))
 
+	clockProvider := clock.NewSystemClock()
+	userRepo := memory.NewUserRepository()
+	verificationRepo := memory.NewVerificationTokenRepository()
+	mailer := email.NewLogMailer(log)
+	txManager := transaction.NewNoopManager()
+	tokenIssuer := authinfra.NewUUIDTokenIssuer()
+
+	registerConfig := auth.RegisterConfig{
+		VerificationURLBase: getEnv("VERIFICATION_URL_BASE", "http://localhost:5173/auth/verify"),
+		VerificationTTL:     defaultVerificationTTL,
+	}
+
 	healthUsecase := health.New()
-	healthHandler := handler.NewHealthHandler(healthUsecase)
-	api := e.Group("/api")
-	healthHandler.Register(api)
+	registerUsecase := auth.NewRegisterUsecase(userRepo, verificationRepo, mailer, clockProvider, registerConfig)
+	verifyUsecase := auth.NewVerifyUsecase(userRepo, verificationRepo, txManager, clockProvider, tokenIssuer)
+	apiHandler := handler.NewHandler(healthUsecase, registerUsecase, verifyUsecase)
+
+	api := e.Group("/techcv/api/v1")
+	apiHandler.Register(api)
 
 	srv := server.New(e, log)
 

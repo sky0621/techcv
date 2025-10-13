@@ -1,0 +1,12 @@
+type: object
+required:
+  - message
+  - expires_at
+properties:
+  message:
+    type: string
+    description: Confirmation message for the guest
+  expires_at:
+    type: string
+    format: date-time
+    description: Expiration timestamp for the verification token in UTC

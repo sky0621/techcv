@@ -1,9 +1,14 @@
 type: object
 required:
-  - code
-  - message
+  - requestId
 properties:
+  requestId:
+    type: string
   code:
     type: string
   message:
     type: string
+  details:
+    type: array
+    items:
+      $ref: ./ErrorDetail.yaml

@@ -30,5 +30,6 @@ get:
               value:
                 status: error
                 error:
+                  requestId: abc123
                   code: internal_error
                   message: unexpected server error

@@ -1,5 +1,5 @@
 title: Manager API
 version: 1.0.0
 description: |
-  OpenAPI specification for the Manager service. The API currently exposes a health
-  check endpoint that reports the application status.
+  OpenAPI specification for the Manager service. The API exposes health checking and
+  guest registration endpoints that allow users to sign up with email verification.

@@ -9,6 +9,8 @@ import { Outlet } from '@tanstack/react-router';
 import { RootLayout } from '@/components/layout/root-layout';
 import { ProtectedRoute } from '@/features/auth/components/protected-route';
 import { AuthCallbackPage } from '@/features/auth/pages/auth-callback-page';
+import { RegisterPage } from '@/features/auth/pages/register-page';
+import { VerifyRegistrationPage } from '@/features/auth/pages/verify-registration-page';
 import { LoginPage } from '@/features/auth/pages/login-page';
 import { DashboardPage } from '@/features/dashboard/pages/dashboard-page';
 import { CVEditorPage } from '@/features/cv/pages/cv-editor-page';
@@ -27,10 +29,22 @@ const loginRoute = createRoute({
   component: LoginPage
 });
 
+const registerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'register',
+  component: RegisterPage
+});
+
 const authCallbackRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'auth/callback',
   component: AuthCallbackPage
+});
+
+const verifyRegistrationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'register/verify',
+  component: VerifyRegistrationPage
 });
 
 const protectedLayoutRoute = createRoute({
@@ -81,6 +95,7 @@ const notFoundRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
+  registerRoute,
   authCallbackRoute,
   protectedLayoutRoute.addChildren([
     dashboardRoute,
@@ -89,6 +104,7 @@ const routeTree = rootRoute.addChildren([
     publicUrlManagerRoute
   ]),
   publicCvRoute,
+  verifyRegistrationRoute,
   notFoundRoute
 ]);
 

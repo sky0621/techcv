@@ -1,3 +1,6 @@
 .idea
 bin
+bin-tools/
 node_modules
+**/.cache/
+

@@ -16,7 +16,7 @@ export const PublicCVViewPage = (): JSX.Element => {
 
       <div className="space-y-4 rounded-lg border bg-card p-8 shadow-sm">
         <p className="text-sm text-muted-foreground">
-          公開用のCV表示コンポーネントを実装してください。バックエンドの`GET /api/v1/public/cv/:public_url`を利用します。
+          公開用のCV表示コンポーネントを実装してください。バックエンドの`GET /techcv/api/v1/public/cv/:public_url`を利用します。
         </p>
       </div>
     </div>
