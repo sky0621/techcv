@@ -1,6 +1,6 @@
 APP_NAME=api
 APP_PATH=./cmd/api
-GOLANGCI_LINT_VERSION ?= v1.58.2
+GOLANGCI_LINT_VERSION ?= v1.60.2
 TOOLS_BIN := $(PWD)/bin-tools
 GOLANGCI_LINT := $(TOOLS_BIN)/golangci-lint
 
