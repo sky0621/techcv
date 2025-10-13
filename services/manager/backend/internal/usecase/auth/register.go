@@ -78,8 +78,8 @@ func (uc *RegisterUsecase) Execute(ctx context.Context, in RegisterInput) (Regis
 		return RegisterOutput{}, domain.NewValidation(domain.ErrorCodeEmailAlreadyRegistered, "このメールアドレスは既に登録されています").WithDetails(detail)
 	}
 
-	if err := uc.tokens.DeleteByEmail(ctx, email); err != nil {
-		return RegisterOutput{}, domain.NewInternal(domain.ErrorCodeTokenCleanupFailed, "確認トークンの初期化に失敗しました", err)
+	if deleteErr := uc.tokens.DeleteByEmail(ctx, email); deleteErr != nil {
+		return RegisterOutput{}, domain.NewInternal(domain.ErrorCodeTokenCleanupFailed, "確認トークンの初期化に失敗しました", deleteErr)
 	}
 
 	hashed, err := password.Hash()
@@ -93,8 +93,8 @@ func (uc *RegisterUsecase) Execute(ctx context.Context, in RegisterInput) (Regis
 		return RegisterOutput{}, err
 	}
 
-	if err := uc.tokens.Save(ctx, token); err != nil {
-		return RegisterOutput{}, domain.NewInternal(domain.ErrorCodeTokenSaveFailed, "確認トークンの保存に失敗しました", err)
+	if saveErr := uc.tokens.Save(ctx, token); saveErr != nil {
+		return RegisterOutput{}, domain.NewInternal(domain.ErrorCodeTokenSaveFailed, "確認トークンの保存に失敗しました", saveErr)
 	}
 
 	verificationURL, err := buildVerificationURL(uc.config.VerificationURLBase, token.Token())
@@ -102,8 +102,8 @@ func (uc *RegisterUsecase) Execute(ctx context.Context, in RegisterInput) (Regis
 		return RegisterOutput{}, domain.NewInternal(domain.ErrorCodeVerificationURLError, "確認メールのURL生成に失敗しました", err)
 	}
 
-	if err := uc.mailer.SendVerificationEmail(ctx, email, verificationURL, token.ExpiresAt()); err != nil {
-		return RegisterOutput{}, domain.NewInternal(domain.ErrorCodeEmailSendFailed, "確認メールの送信に失敗しました", err)
+	if sendErr := uc.mailer.SendVerificationEmail(ctx, email, verificationURL, token.ExpiresAt()); sendErr != nil {
+		return RegisterOutput{}, domain.NewInternal(domain.ErrorCodeEmailSendFailed, "確認メールの送信に失敗しました", sendErr)
 	}
 
 	return RegisterOutput{

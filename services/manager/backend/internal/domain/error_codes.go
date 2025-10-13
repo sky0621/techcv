@@ -1,3 +1,4 @@
+// Package domain contains shared application domain types.
 package domain
 
 const (
@@ -9,18 +10,18 @@ const (
 	ErrorCodeEmailAlreadyRegistered   = "EMAIL_ALREADY_REGISTERED"
 	ErrorCodeUserNotFound             = "USER_NOT_FOUND"
 	ErrorCodeTokenNotFound            = "TOKEN_NOT_FOUND"
-	ErrorCodeInvalidJson              = "INVALID_JSON"
+	ErrorCodeInvalidJSON              = "INVALID_JSON"
 	ErrorCodeInvalidRequest           = "INVALID_REQUEST"
-	ErrorCodeInvalidVerificationToken = "INVALID_VERIFICATION_TOKEN"
-	ErrorCodeTokenLookupFailed        = "TOKEN_LOOKUP_FAILED"
+	ErrorCodeInvalidVerificationToken = "INVALID_VERIFICATION_TOKEN" // #nosec G101 -- error code identifier, not a credential
+	ErrorCodeTokenLookupFailed        = "TOKEN_LOOKUP_FAILED"        // #nosec G101 -- error code identifier, not a credential
 	ErrorCodeVerificationTokenExpired = "VERIFICATION_TOKEN_EXPIRED"
 	ErrorCodeUserLookupFailed         = "USER_LOOKUP_FAILED"
 	ErrorCodeUserCreateFailed         = "USER_CREATE_FAILED"
 	ErrorCodeTokenDeleteFailed        = "TOKEN_DELETE_FAILED"
-	ErrorCodeAuthTokenIssueFailed     = "AUTH_TOKEN_ISSUE_FAILED"
+	ErrorCodeAuthTokenIssueFailed     = "AUTH_TOKEN_ISSUE_FAILED" // #nosec G101 -- error code identifier, not a credential
 	ErrorCodePasswordMismatch         = "PASSWORD_MISMATCH"
 	ErrorCodeTokenCleanupFailed       = "TOKEN_CLEANUP_FAILED"
-	ErrorCodeTokenSaveFailed          = "TOKEN_SAVE_FAILED"
+	ErrorCodeTokenSaveFailed          = "TOKEN_SAVE_FAILED" // #nosec G101 -- error code identifier, not a credential
 	ErrorCodeVerificationURLError     = "VERIFICATION_URL_ERROR"
 	ErrorCodeVerificationURLMissing   = "VERIFICATION_URL_MISSING"
 	ErrorCodeEmailSendFailed          = "EMAIL_SEND_FAILED"

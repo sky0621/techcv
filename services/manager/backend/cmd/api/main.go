@@ -23,6 +23,11 @@ import (
 	"github.com/sky0621/techcv/manager/backend/internal/usecase/health"
 )
 
+const (
+	requestTimeout        = 30 * time.Second
+	defaultVerificationTTL = 24 * time.Hour
+)
+
 func main() {
 	log := logger.New()
 
@@ -35,7 +40,7 @@ func main() {
 
 	e.Use(echomiddleware.RequestID())
 	e.Use(echomiddleware.Recover())
-	e.Use(httpmiddleware.Timeout(30 * time.Second))
+	e.Use(httpmiddleware.Timeout(requestTimeout))
 	e.Use(httpmiddleware.RequestLogger(log))
 
 	clockProvider := clock.NewSystemClock()
@@ -47,7 +52,7 @@ func main() {
 
 	registerConfig := auth.RegisterConfig{
 		VerificationURLBase: getEnv("VERIFICATION_URL_BASE", "http://localhost:5173/auth/verify"),
-		VerificationTTL:     24 * time.Hour,
+		VerificationTTL:     defaultVerificationTTL,
 	}
 
 	healthUsecase := health.New()

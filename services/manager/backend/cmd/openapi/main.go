@@ -14,6 +14,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	schemaTypeObject    = "object"
+	schemaTypeString    = "string"
+	schemaTypeInteger   = "integer"
+	schemaTypeNumber    = "number"
+	schemaTypeBoolean   = "boolean"
+	schemaTypeArray     = "array"
+	schemaFormatDateTime = "date-time"
+	outputDirPermission = 0o750
+	outputFilePermission = 0o600
+)
+
 type document struct {
 	OpenAPI    string              `json:"openapi"`
 	Info       info                `json:"info"`
@@ -109,9 +121,9 @@ func main() {
 	}
 
 	var doc document
-	if err := json.Unmarshal(content, &doc); err != nil {
-		if err := yaml.Unmarshal(content, &doc); err != nil {
-			fatalf("parse spec: %v", err)
+	if parseErr := json.Unmarshal(content, &doc); parseErr != nil {
+		if yamlErr := yaml.Unmarshal(content, &doc); yamlErr != nil {
+			fatalf("parse spec: %v", yamlErr)
 		}
 	}
 
@@ -121,11 +133,11 @@ func main() {
 		fatalf("generate code: %v", err)
 	}
 
-	if err := os.MkdirAll(filepath.Dir(*outPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(*outPath), outputDirPermission); err != nil {
 		fatalf("create out dir: %v", err)
 	}
 
-	if err := os.WriteFile(*outPath, goCode, 0o644); err != nil {
+	if err := os.WriteFile(*outPath, goCode, outputFilePermission); err != nil {
 		fatalf("write output: %v", err)
 	}
 }
@@ -247,20 +259,20 @@ func (g *generator) emitType(name string, s *schema) {
 			g.typeDefs[refName] = nil
 		}
 		g.typeDefinitions = append(g.typeDefinitions, fmt.Sprintf("type %s %s\n\n", name, refName))
-	case s.Type == "object":
+	case s.Type == schemaTypeObject:
 		g.typeDefinitions = append(g.typeDefinitions, g.buildObjectType(name, s))
-	case s.Type == "string" && len(s.Enum) > 0:
+	case s.Type == schemaTypeString && len(s.Enum) > 0:
 		g.typeDefinitions = append(g.typeDefinitions, fmt.Sprintf("type %s string\n\n", name))
-	case s.Type == "string":
+	case s.Type == schemaTypeString:
 		g.typeDefinitions = append(g.typeDefinitions, fmt.Sprintf("type %s string\n\n", name))
-	case s.Type == "integer":
+	case s.Type == schemaTypeInteger:
 		g.typeDefinitions = append(g.typeDefinitions, fmt.Sprintf("type %s int\n\n", name))
-	case s.Type == "number":
+	case s.Type == schemaTypeNumber:
 		g.typeDefinitions = append(g.typeDefinitions, fmt.Sprintf("type %s float64\n\n", name))
-	case s.Type == "boolean":
+	case s.Type == schemaTypeBoolean:
 		g.typeDefinitions = append(g.typeDefinitions, fmt.Sprintf("type %s bool\n\n", name))
-	case s.Type == "array" && s.Items != nil:
-		itemType := g.resolveType(name+"Item", s.Items, true)
+	case s.Type == schemaTypeArray && s.Items != nil:
+		itemType := g.resolveType(name+"Item", s.Items)
 		g.typeDefinitions = append(g.typeDefinitions, fmt.Sprintf("type %s []%s\n\n", name, itemType))
 	default:
 		g.typeDefinitions = append(g.typeDefinitions, fmt.Sprintf("type %s interface{}\n\n", name))
@@ -287,7 +299,7 @@ func (g *generator) buildObjectType(name string, s *schema) string {
 	for _, prop := range propNames {
 		propSchema := s.Properties[prop]
 		fieldName := toCamel(prop)
-		fieldType := g.resolveType(name+fieldName, propSchema, false)
+		fieldType := g.resolveType(name+fieldName, propSchema)
 
 		usePointer := propSchema.Nullable
 		if _, ok := required[prop]; !ok {
@@ -305,7 +317,7 @@ func (g *generator) buildObjectType(name string, s *schema) string {
 	return b.String()
 }
 
-func (g *generator) resolveType(parentName string, s *schema, isArrayItem bool) string {
+func (g *generator) resolveType(parentName string, s *schema) string {
 	if s == nil {
 		return "interface{}"
 	}
@@ -319,22 +331,22 @@ func (g *generator) resolveType(parentName string, s *schema, isArrayItem bool) 
 	}
 
 	switch s.Type {
-	case "string":
-		if s.Format == "date-time" {
+	case schemaTypeString:
+		if s.Format == schemaFormatDateTime {
 			g.imports["time"] = struct{}{}
 			return "time.Time"
 		}
 		return "string"
-	case "integer":
+	case schemaTypeInteger:
 		return "int"
-	case "number":
+	case schemaTypeNumber:
 		return "float64"
-	case "boolean":
+	case schemaTypeBoolean:
 		return "bool"
-	case "array":
-		elemType := g.resolveType(parentName+"Item", s.Items, true)
+	case schemaTypeArray:
+		elemType := g.resolveType(parentName+"Item", s.Items)
 		return "[]" + elemType
-	case "object":
+	case schemaTypeObject:
 		if len(s.Properties) == 0 {
 			return "map[string]interface{}"
 		}

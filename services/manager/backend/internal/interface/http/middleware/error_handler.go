@@ -1,3 +1,4 @@
+// Package middleware hosts HTTP middleware components for the API.
 package middleware
 
 import (

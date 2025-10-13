@@ -1,3 +1,4 @@
+// Package transaction offers transaction manager implementations.
 package transaction
 
 import "context"

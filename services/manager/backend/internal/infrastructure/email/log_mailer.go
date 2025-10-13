@@ -1,3 +1,4 @@
+// Package email provides email delivery infrastructure implementations.
 package email
 
 import (

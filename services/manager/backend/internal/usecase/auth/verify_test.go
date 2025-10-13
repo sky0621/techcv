@@ -10,6 +10,8 @@ import (
 	"github.com/sky0621/techcv/manager/backend/internal/domain/user"
 )
 
+const guestEmailAddress = "guest@example.com"
+
 func TestVerifyUsecase_Success(t *testing.T) {
 	userRepo := newFakeUserRepo()
 	tokenRepo := newFakeTokenRepo()
@@ -17,7 +19,7 @@ func TestVerifyUsecase_Success(t *testing.T) {
 	clock := fixedClock{now: time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC)}
 	issuer := &fakeTokenIssuer{}
 
-	email, _ := user.NewEmail("guest@example.com")
+	email, _ := user.NewEmail(guestEmailAddress)
 	token, _ := user.NewVerificationToken(email, "hashed", clock.now.Add(-time.Hour), 24*time.Hour)
 	tokenRepo.tokens = append(tokenRepo.tokens, token)
 
@@ -32,7 +34,7 @@ func TestVerifyUsecase_Success(t *testing.T) {
 		t.Fatalf("unexpected auth token: %s", out.AuthToken)
 	}
 
-	if out.User.Email != "guest@example.com" {
+	if out.User.Email != guestEmailAddress {
 		t.Fatalf("unexpected email: %s", out.User.Email)
 	}
 
@@ -52,7 +54,7 @@ func TestVerifyUsecase_TokenExpired(t *testing.T) {
 	clock := fixedClock{now: time.Date(2024, 1, 2, 10, 0, 0, 0, time.UTC)}
 	issuer := &fakeTokenIssuer{}
 
-	email, _ := user.NewEmail("guest@example.com")
+	email, _ := user.NewEmail(guestEmailAddress)
 	token, _ := user.NewVerificationToken(email, "hashed", clock.now.Add(-48*time.Hour), 24*time.Hour)
 	tokenRepo.tokens = append(tokenRepo.tokens, token)
 
@@ -93,7 +95,7 @@ func TestVerifyUsecase_EmailAlreadyRegistered(t *testing.T) {
 	clock := fixedClock{now: time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC)}
 	issuer := &fakeTokenIssuer{}
 
-	email, _ := user.NewEmail("guest@example.com")
+	email, _ := user.NewEmail(guestEmailAddress)
 	token, _ := user.NewVerificationToken(email, "hashed", clock.now.Add(-time.Hour), 24*time.Hour)
 	tokenRepo.tokens = append(tokenRepo.tokens, token)
 

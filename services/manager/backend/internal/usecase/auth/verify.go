@@ -34,7 +34,7 @@ type VerifyOutput struct {
 	User      VerifiedUser
 }
 
-// VerifyUsecase finalises registration by validating and consuming verification tokens.
+// VerifyUsecase finalizes registration by validating and consuming verification tokens.
 type VerifyUsecase struct {
 	users  user.UserRepository
 	tokens user.VerificationTokenRepository
@@ -98,17 +98,17 @@ func (uc *VerifyUsecase) Execute(ctx context.Context, in VerifyInput) (VerifyOut
 		return VerifyOutput{}, err
 	}
 
-	if err := uc.tx.WithinTransaction(ctx, func(txCtx context.Context) error {
-		if err := uc.users.Create(txCtx, newUser); err != nil {
-			return domain.NewInternal(domain.ErrorCodeUserCreateFailed, "ユーザーの作成に失敗しました", err)
+	if txErr := uc.tx.WithinTransaction(ctx, func(txCtx context.Context) error {
+		if createErr := uc.users.Create(txCtx, newUser); createErr != nil {
+			return domain.NewInternal(domain.ErrorCodeUserCreateFailed, "ユーザーの作成に失敗しました", createErr)
 		}
 
-		if err := uc.tokens.DeleteByToken(txCtx, tokenValue); err != nil {
-			return domain.NewInternal(domain.ErrorCodeTokenDeleteFailed, "確認トークンの削除に失敗しました", err)
+		if deleteErr := uc.tokens.DeleteByToken(txCtx, tokenValue); deleteErr != nil {
+			return domain.NewInternal(domain.ErrorCodeTokenDeleteFailed, "確認トークンの削除に失敗しました", deleteErr)
 		}
 		return nil
-	}); err != nil {
-		return VerifyOutput{}, err
+	}); txErr != nil {
+		return VerifyOutput{}, txErr
 	}
 
 	authToken, err := uc.issuer.Issue(ctx, newUser)

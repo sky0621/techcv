@@ -8,7 +8,10 @@ import (
 	"github.com/sky0621/techcv/manager/backend/internal/domain"
 )
 
-const invalidPasswordMessage = "パスワードは8文字以上で、英字と数字を含む必要があります"
+const (
+	invalidPasswordMessage = "パスワードは8文字以上で、英字と数字を含む必要があります" // #nosec G101 -- user-facing validation message
+	minPasswordLength      = 8
+)
 
 // Password represents a validated password prior to hashing.
 type Password struct {
@@ -17,7 +20,7 @@ type Password struct {
 
 // NewPassword validates the given raw password against domain rules.
 func NewPassword(raw string) (Password, error) {
-	if len(raw) < 8 {
+	if len(raw) < minPasswordLength {
 		detail := domain.ErrorDetail{Field: "password", Code: domain.ErrorCodeInvalidPassword, Message: invalidPasswordMessage}
 		return Password{}, domain.NewValidation(domain.ErrorCodeInvalidPassword, invalidPasswordMessage).WithDetails(detail)
 	}

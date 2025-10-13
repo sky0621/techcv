@@ -1,3 +1,4 @@
+// Package auth provides infrastructure components used by authentication flows.
 package auth
 
 import (

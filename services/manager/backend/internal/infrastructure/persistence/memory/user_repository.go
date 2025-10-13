@@ -1,3 +1,4 @@
+// Package memory provides in-memory persistence implementations.
 package memory
 
 import (

@@ -1,3 +1,4 @@
+// Package user provides domain types related to user accounts.
 package user
 
 import (

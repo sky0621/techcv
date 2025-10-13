@@ -1,3 +1,4 @@
+// Package handler exposes HTTP handlers that satisfy the OpenAPI contract.
 package handler
 
 import (
@@ -12,7 +13,7 @@ import (
 	"github.com/sky0621/techcv/manager/backend/internal/usecase/auth"
 )
 
-// HealthUsecase defines the behaviour required by the handler.
+// HealthUsecase defines the behavior required by the handler.
 type HealthUsecase interface {
 	Check(ctx context.Context) (*domain.HealthStatus, error)
 }
@@ -72,7 +73,7 @@ func (h *Handler) PostAuthRegister(c echo.Context) error {
 	var req openapi.RegisterRequest
 	if err := c.Bind(&req); err != nil {
 		return domain.NewValidation(domain.ErrorCodeInvalidRequest, "リクエスト形式が正しくありません").WithDetails(
-			domain.ErrorDetail{Field: "body", Code: domain.ErrorCodeInvalidJson, Message: "JSONの解析に失敗しました"},
+			domain.ErrorDetail{Field: "body", Code: domain.ErrorCodeInvalidJSON, Message: "JSONの解析に失敗しました"},
 		)
 	}
 
@@ -97,12 +98,12 @@ func (h *Handler) PostAuthRegister(c echo.Context) error {
 	return response.Success(c, http.StatusOK, data, meta)
 }
 
-// PostAuthVerify finalises registration and authenticates the user.
+// PostAuthVerify finalizes registration and authenticates the user.
 func (h *Handler) PostAuthVerify(c echo.Context) error {
 	var req openapi.VerifyRequest
 	if err := c.Bind(&req); err != nil {
 		return domain.NewValidation(domain.ErrorCodeInvalidRequest, "リクエスト形式が正しくありません").WithDetails(
-			domain.ErrorDetail{Field: "body", Code: domain.ErrorCodeInvalidJson, Message: "JSONの解析に失敗しました"},
+			domain.ErrorDetail{Field: "body", Code: domain.ErrorCodeInvalidJSON, Message: "JSONの解析に失敗しました"},
 		)
 	}
 

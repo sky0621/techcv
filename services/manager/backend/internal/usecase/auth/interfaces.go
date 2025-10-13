@@ -1,3 +1,4 @@
+// Package auth defines use cases and supporting interfaces for authentication flows.
 package auth
 
 import (
