@@ -1,6 +1,6 @@
 SERVICES := manager publisher administrator
-BACKEND_TARGETS := run build test tidy lint generate-openapi help
-FRONTEND_TARGETS := install vite-install dev build preview lint test fmt
+BACKEND_TARGETS := run build test tidy fmt lint gen-api help
+FRONTEND_TARGETS := install vite-install dev build preview lint test
 OPENAPI_TARGETS := install-redocly bundle-openapi clean
 
 .PHONY: $(foreach svc,$(SERVICES),$(foreach tgt,$(BACKEND_TARGETS),$(svc)-be-$(tgt))) \
