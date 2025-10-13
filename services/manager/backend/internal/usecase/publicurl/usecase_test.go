@@ -35,7 +35,7 @@ func (m *mockRepository) GetActive(ctx context.Context) (*domain.PublicURL, erro
 	}
 	if m.getActiveCalls >= len(m.getActiveResponses) {
 		return nil, nil
- 	}
+	}
 	result := m.getActiveResponses[m.getActiveCalls]
 	m.getActiveCalls++
 	if result == nil {

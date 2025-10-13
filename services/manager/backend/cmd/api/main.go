@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	requestTimeout        = 30 * time.Second
+	requestTimeout         = 30 * time.Second
 	defaultVerificationTTL = 24 * time.Hour
 )
 
@@ -73,7 +73,7 @@ func main() {
 	api := e.Group("/api")
 	healthHandler.Register(api)
 
-  clockProvider := clock.NewSystemClock()
+	clockProvider := clock.NewSystemClock()
 	userRepo := memory.NewUserRepository()
 	verificationRepo := memory.NewVerificationTokenRepository()
 	mailer := email.NewLogMailer(log)

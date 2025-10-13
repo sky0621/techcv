@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	getActivePublicURLQuery = "-- name: GetActivePublicURL :one\nSELECT\n  id,\n  url_key,\n  is_active,\n  created_at,\n  updated_at\nFROM public_urls\nWHERE is_active = TRUE\nORDER BY updated_at DESC\nLIMIT 1\n"
-	createPublicURLQuery    = "-- name: CreatePublicURL :execresult\nINSERT INTO public_urls (url_key)\nVALUES (?)\n"
-	listPublicURLsQuery     = "-- name: ListPublicURLs :many\nSELECT\n  id,\n  url_key,\n  is_active,\n  created_at,\n  updated_at\nFROM public_urls\nORDER BY updated_at DESC\n"
+	getActivePublicURLQuery  = "-- name: GetActivePublicURL :one\nSELECT\n  id,\n  url_key,\n  is_active,\n  created_at,\n  updated_at\nFROM public_urls\nWHERE is_active = TRUE\nORDER BY updated_at DESC\nLIMIT 1\n"
+	createPublicURLQuery     = "-- name: CreatePublicURL :execresult\nINSERT INTO public_urls (url_key)\nVALUES (?)\n"
+	listPublicURLsQuery      = "-- name: ListPublicURLs :many\nSELECT\n  id,\n  url_key,\n  is_active,\n  created_at,\n  updated_at\nFROM public_urls\nORDER BY updated_at DESC\n"
 	deactivatePublicURLQuery = "-- name: DeactivatePublicURL :exec\nUPDATE public_urls\nSET is_active = FALSE,\n    updated_at = CURRENT_TIMESTAMP(6)\nWHERE id = ?\n"
 )
 
