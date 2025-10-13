@@ -1,7 +1,9 @@
 APP_NAME=api
 APP_PATH=./cmd/api
+COMPOSE ?= docker compose
+SQLC ?= sqlc
 
-.PHONY: help run build test tidy lint generate-openapi
+.PHONY: help run build test tidy lint migrate generate-sqlc generate-openapi
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## ' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "%-16s %s\n", $$1, $$2}'
@@ -20,6 +22,12 @@ tidy: ## Update go modules
 
 lint: ## Run gofmt to ensure formatting
 	gofmt -l $(shell find . -name '*.go' -not -path './vendor/*')
+
+migrate: ## Apply schema changes to the local database using sqldef
+	$(COMPOSE) run --rm sqldef
+
+generate-sqlc: ## Generate database access layer code with sqlc
+	$(SQLC) generate
 
 generate-openapi: ## Generate Go sources from OpenAPI specification
 	GOCACHE=$(PWD)/.cache go run ./cmd/openapi -spec ../openapi/openapi.yaml -out ./internal/interface/http/openapi/openapi.gen.go

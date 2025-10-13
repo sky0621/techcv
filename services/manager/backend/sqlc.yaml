@@ -1,0 +1,16 @@
+version: "2"
+sql:
+  - engine: "mysql"
+    schema: "db/schema.sql"
+    queries: "db/queries"
+    gen:
+      go:
+        package: mysqlsqlc
+        out: internal/infrastructure/mysql/sqlc
+        sql_package: database/sql
+        emit_json_tags: true
+        emit_prepared_queries: false
+        emit_interface: false
+        overrides:
+          - db_type: mysql:tinyint
+            go_type: bool
