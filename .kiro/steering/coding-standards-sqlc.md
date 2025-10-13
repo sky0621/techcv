@@ -80,7 +80,12 @@ INSERT INTO users (
     created_at,
     updated_at
 ) VALUES (
-    ?, ?, ?, ?, ?, ?
+    sqlc.arg('id'),
+    sqlc.arg('email'),
+    sqlc.arg('password_hash'),
+    sqlc.arg('name'),
+    sqlc.arg('created_at'),
+    sqlc.arg('updated_at')
 );
 
 -- name: GetUserByID :one
@@ -96,7 +101,7 @@ SELECT
     updated_at,
     deleted_at
 FROM users
-WHERE id = ? AND deleted_at IS NULL;
+WHERE id = sqlc.arg('id') AND deleted_at IS NULL;
 
 -- name: GetUserByEmail :one
 SELECT 
@@ -111,34 +116,34 @@ SELECT
     updated_at,
     deleted_at
 FROM users
-WHERE email = ? AND deleted_at IS NULL;
+WHERE email = sqlc.arg('email') AND deleted_at IS NULL;
 
 -- name: UpdateUser :exec
 UPDATE users
 SET
-    email = ?,
-    name = ?,
-    bio = ?,
-    updated_at = ?
-WHERE id = ? AND deleted_at IS NULL;
+    email = sqlc.arg('email'),
+    name = sqlc.arg('name'),
+    bio = sqlc.arg('bio'),
+    updated_at = sqlc.arg('updated_at')
+WHERE id = sqlc.arg('id') AND deleted_at IS NULL;
 
 -- name: UpdateUserPassword :exec
 UPDATE users
 SET
-    password_hash = ?,
-    updated_at = ?
-WHERE id = ? AND deleted_at IS NULL;
+    password_hash = sqlc.arg('password_hash'),
+    updated_at = sqlc.arg('updated_at')
+WHERE id = sqlc.arg('id') AND deleted_at IS NULL;
 
 -- name: DeleteUser :exec
 UPDATE users
 SET
-    deleted_at = ?,
-    updated_at = ?
-WHERE id = ? AND deleted_at IS NULL;
+    deleted_at = sqlc.arg('deleted_at'),
+    updated_at = sqlc.arg('updated_at')
+WHERE id = sqlc.arg('id') AND deleted_at IS NULL;
 
 -- name: HardDeleteUser :exec
 DELETE FROM users
-WHERE id = ?;
+WHERE id = sqlc.arg('id');
 ```
 
 ### 注釈の使い分け
@@ -163,16 +168,16 @@ SELECT
 FROM users u
 WHERE 
     u.deleted_at IS NULL
-    AND (? = '' OR u.name LIKE CONCAT('%', ?, '%'))
+    AND (sqlc.arg('keyword') = '' OR u.name LIKE CONCAT('%', sqlc.arg('keyword'), '%'))
 ORDER BY u.created_at DESC
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
 -- name: CountUsers :one
 SELECT COUNT(*)
 FROM users u
 WHERE 
     u.deleted_at IS NULL
-    AND (? = '' OR u.name LIKE CONCAT('%', ?, '%'));
+    AND (sqlc.arg('keyword') = '' OR u.name LIKE CONCAT('%', sqlc.arg('keyword'), '%'));
 ```
 
 ### 詳細取得（JOIN使用）
@@ -193,7 +198,7 @@ SELECT
     COALESCE(SUM(o.total_amount), 0) as total_spent
 FROM users u
 LEFT JOIN orders o ON u.id = o.user_id AND o.deleted_at IS NULL
-WHERE u.id = ? AND u.deleted_at IS NULL
+WHERE u.id = sqlc.arg('id') AND u.deleted_at IS NULL
 GROUP BY u.id;
 ```
 
@@ -203,7 +208,7 @@ GROUP BY u.id;
 -- name: CountUsersByStatus :one
 SELECT COUNT(*)
 FROM users
-WHERE is_active = ? AND deleted_at IS NULL;
+WHERE is_active = sqlc.arg('is_active') AND deleted_at IS NULL;
 
 -- name: GetUserStatistics :one
 SELECT 
@@ -229,7 +234,7 @@ SELECT
     email_verified_at, -- DATETIME(6) NULL
     deleted_at        -- DATETIME(6) NULL
 FROM users
-WHERE id = ?;
+WHERE id = sqlc.arg('id');
 ```
 
 生成されるGoコード：
@@ -255,19 +260,19 @@ SELECT
     COALESCE(bio, '') as bio,
     COALESCE(profile_image, '') as profile_image
 FROM users
-WHERE id = ?;
+WHERE id = sqlc.arg('id');
 ```
 
 ## パラメータの扱い
 
 ### 名前付きパラメータ
 
-sqlcはプレースホルダー `?` を使用します（MySQL）。
+sqlcは `sqlc.arg()` を使用して名前付きパラメータを定義します。
 
 ```sql
 -- name: CreateUser :execresult
 INSERT INTO users (id, email, password_hash, name, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?);
+VALUES (sqlc.arg('id'), sqlc.arg('email'), sqlc.arg('password_hash'), sqlc.arg('name'), sqlc.arg('created_at'), sqlc.arg('updated_at'));
 ```
 
 生成されるGoコード：
@@ -294,10 +299,10 @@ SELECT id, email, name, created_at
 FROM users
 WHERE 
     deleted_at IS NULL
-    AND (? = '' OR email LIKE CONCAT('%', ?, '%'))
-    AND (? = 0 OR is_active = ?)
+    AND (sqlc.arg('keyword') = '' OR email LIKE CONCAT('%', sqlc.arg('keyword'), '%'))
+    AND (sqlc.arg('is_active') = 0 OR is_active = sqlc.arg('is_active'))
 ORDER BY created_at DESC
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 ```
 
 ## トランザクション管理
@@ -508,8 +513,7 @@ func (r *userQueryRepository) FindList(
     queries := sqlc.New(r.db)
     
     rows, err := queries.ListUsers(ctx, sqlc.ListUsersParams{
-        Column1: query.Keyword,
-        Column2: query.Keyword,
+        Keyword: query.Keyword,
         Limit:   int32(query.PageSize),
         Offset:  int32(query.Page * query.PageSize),
     })
