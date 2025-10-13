@@ -37,8 +37,8 @@ func (r *UserRepository) Create(_ context.Context, u user.User) error {
 
 	email := u.Email().String()
 	if _, exists := r.users[email]; exists {
-		detail := domain.ErrorDetail{Field: "email", Code: "EMAIL_ALREADY_REGISTERED", Message: "このメールアドレスは既に登録されています"}
-		return domain.NewValidation("EMAIL_ALREADY_REGISTERED", "このメールアドレスは既に登録されています").WithDetails(detail)
+		detail := domain.ErrorDetail{Field: "email", Code: domain.ErrorCodeEmailAlreadyRegistered, Message: "このメールアドレスは既に登録されています"}
+		return domain.NewValidation(domain.ErrorCodeEmailAlreadyRegistered, "このメールアドレスは既に登録されています").WithDetails(detail)
 	}
 
 	r.users[email] = u
@@ -54,6 +54,6 @@ func (r *UserRepository) GetByEmail(_ context.Context, email user.Email) (user.U
 		return u, nil
 	}
 
-	detail := domain.ErrorDetail{Field: "email", Code: "USER_NOT_FOUND", Message: "ユーザーが見つかりません"}
-	return user.User{}, domain.NewNotFound("USER_NOT_FOUND", "ユーザーが見つかりません").WithDetails(detail)
+	detail := domain.ErrorDetail{Field: "email", Code: domain.ErrorCodeUserNotFound, Message: "ユーザーが見つかりません"}
+	return user.User{}, domain.NewNotFound(domain.ErrorCodeUserNotFound, "ユーザーが見つかりません").WithDetails(detail)
 }

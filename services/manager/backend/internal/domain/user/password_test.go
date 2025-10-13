@@ -49,7 +49,7 @@ func TestNewPassword(t *testing.T) {
 					t.Fatalf("expected app error, got %v", err)
 				}
 
-				if appErr.Code != "INVALID_PASSWORD" {
+				if appErr.Code != domain.ErrorCodeInvalidPassword {
 					t.Fatalf("unexpected code: %s", appErr.Code)
 				}
 				return

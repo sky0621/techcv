@@ -18,8 +18,8 @@ type Password struct {
 // NewPassword validates the given raw password against domain rules.
 func NewPassword(raw string) (Password, error) {
 	if len(raw) < 8 {
-		detail := domain.ErrorDetail{Field: "password", Code: "INVALID_PASSWORD", Message: invalidPasswordMessage}
-		return Password{}, domain.NewValidation("INVALID_PASSWORD", invalidPasswordMessage).WithDetails(detail)
+		detail := domain.ErrorDetail{Field: "password", Code: domain.ErrorCodeInvalidPassword, Message: invalidPasswordMessage}
+		return Password{}, domain.NewValidation(domain.ErrorCodeInvalidPassword, invalidPasswordMessage).WithDetails(detail)
 	}
 
 	var hasLetter, hasDigit bool
@@ -33,8 +33,8 @@ func NewPassword(raw string) (Password, error) {
 	}
 
 	if !hasLetter || !hasDigit {
-		detail := domain.ErrorDetail{Field: "password", Code: "INVALID_PASSWORD", Message: invalidPasswordMessage}
-		return Password{}, domain.NewValidation("INVALID_PASSWORD", invalidPasswordMessage).WithDetails(detail)
+		detail := domain.ErrorDetail{Field: "password", Code: domain.ErrorCodeInvalidPassword, Message: invalidPasswordMessage}
+		return Password{}, domain.NewValidation(domain.ErrorCodeInvalidPassword, invalidPasswordMessage).WithDetails(detail)
 	}
 
 	return Password{value: raw}, nil
@@ -44,7 +44,7 @@ func NewPassword(raw string) (Password, error) {
 func (p Password) Hash() (string, error) {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(p.value), bcrypt.DefaultCost)
 	if err != nil {
-		return "", domain.NewInternal("PASSWORD_HASH_FAILED", "パスワードのハッシュ化に失敗しました", err)
+		return "", domain.NewInternal(domain.ErrorCodePasswordHashFailed, "パスワードのハッシュ化に失敗しました", err)
 	}
 	return string(hashed), nil
 }

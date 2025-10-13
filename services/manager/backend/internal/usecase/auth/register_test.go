@@ -88,7 +88,7 @@ func TestRegisterUsecase_EmailAlreadyExists(t *testing.T) {
 	}
 
 	var appErr *domain.AppError
-	if !errors.As(err, &appErr) || appErr.Code != "EMAIL_ALREADY_REGISTERED" {
+	if !errors.As(err, &appErr) || appErr.Code != domain.ErrorCodeEmailAlreadyRegistered {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -109,7 +109,7 @@ func TestRegisterUsecase_PasswordMismatch(t *testing.T) {
 	})
 
 	var appErr *domain.AppError
-	if err == nil || !errors.As(err, &appErr) || appErr.Code != "PASSWORD_MISMATCH" {
+	if err == nil || !errors.As(err, &appErr) || appErr.Code != domain.ErrorCodePasswordMismatch {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -130,7 +130,7 @@ func TestRegisterUsecase_InvalidEmail(t *testing.T) {
 	})
 
 	var appErr *domain.AppError
-	if err == nil || !errors.As(err, &appErr) || appErr.Code != "INVALID_EMAIL_FORMAT" {
+	if err == nil || !errors.As(err, &appErr) || appErr.Code != domain.ErrorCodeInvalidEmailFormat {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -188,7 +188,7 @@ func (r *fakeUserRepo) GetByEmail(_ context.Context, email user.Email) (user.Use
 	if u, ok := r.users[email.String()]; ok {
 		return u, nil
 	}
-	return user.User{}, domain.NewNotFound("USER_NOT_FOUND", "ユーザーが見つかりません")
+	return user.User{}, domain.NewNotFound(domain.ErrorCodeUserNotFound, "ユーザーが見つかりません")
 }
 
 type fakeTokenRepo struct {
@@ -210,7 +210,7 @@ func (r *fakeTokenRepo) FindByToken(_ context.Context, token string) (user.Verif
 			return t, nil
 		}
 	}
-	return user.VerificationToken{}, domain.NewNotFound("TOKEN_NOT_FOUND", "確認トークンが見つかりません")
+	return user.VerificationToken{}, domain.NewNotFound(domain.ErrorCodeTokenNotFound, "確認トークンが見つかりません")
 }
 
 func (r *fakeTokenRepo) DeleteByToken(_ context.Context, token string) error {

@@ -20,17 +20,17 @@ type VerificationToken struct {
 // NewVerificationToken creates a verification token with the provided TTL.
 func NewVerificationToken(email Email, passwordHash string, now time.Time, ttl time.Duration) (VerificationToken, error) {
 	if passwordHash == "" {
-		return VerificationToken{}, domain.NewInternal("INVALID_PASSWORD_HASH", "無効なパスワードハッシュです", nil)
+		return VerificationToken{}, domain.NewInternal(domain.ErrorCodeInvalidPasswordHash, "無効なパスワードハッシュです", nil)
 	}
 
 	id, err := uuidv7.NewString()
 	if err != nil {
-		return VerificationToken{}, domain.NewInternal("UUID_GENERATION_FAILED", "トークンIDの生成に失敗しました", err)
+		return VerificationToken{}, domain.NewInternal(domain.ErrorCodeUUIDGenerationFailed, "トークンIDの生成に失敗しました", err)
 	}
 
 	tokenValue, err := uuidv7.NewString()
 	if err != nil {
-		return VerificationToken{}, domain.NewInternal("UUID_GENERATION_FAILED", "確認トークンの生成に失敗しました", err)
+		return VerificationToken{}, domain.NewInternal(domain.ErrorCodeUUIDGenerationFailed, "確認トークンの生成に失敗しました", err)
 	}
 
 	createdAt := now.UTC().Truncate(time.Microsecond)

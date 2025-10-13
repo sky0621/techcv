@@ -42,7 +42,7 @@ func TestNewEmail(t *testing.T) {
 					t.Fatalf("expected app error, got %v", err)
 				}
 
-				if appErr.Code != "INVALID_EMAIL_FORMAT" {
+				if appErr.Code != domain.ErrorCodeInvalidEmailFormat {
 					t.Fatalf("unexpected code: %s", appErr.Code)
 				}
 				return

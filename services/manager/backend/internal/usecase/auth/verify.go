@@ -64,8 +64,8 @@ func NewVerifyUsecase(
 func (uc *VerifyUsecase) Execute(ctx context.Context, in VerifyInput) (VerifyOutput, error) {
 	tokenValue := strings.TrimSpace(in.Token)
 	if tokenValue == "" {
-		detail := domain.ErrorDetail{Field: "token", Code: "INVALID_VERIFICATION_TOKEN", Message: "確認トークンを指定してください"}
-		return VerifyOutput{}, domain.NewValidation("INVALID_VERIFICATION_TOKEN", "確認トークンを指定してください").WithDetails(detail)
+		detail := domain.ErrorDetail{Field: "token", Code: domain.ErrorCodeInvalidVerificationToken, Message: "確認トークンを指定してください"}
+		return VerifyOutput{}, domain.NewValidation(domain.ErrorCodeInvalidVerificationToken, "確認トークンを指定してください").WithDetails(detail)
 	}
 
 	record, err := uc.tokens.FindByToken(ctx, tokenValue)
@@ -73,24 +73,24 @@ func (uc *VerifyUsecase) Execute(ctx context.Context, in VerifyInput) (VerifyOut
 		if domain.IsAppError(err) {
 			return VerifyOutput{}, err
 		}
-		return VerifyOutput{}, domain.NewInternal("TOKEN_LOOKUP_FAILED", "確認トークンの取得に失敗しました", err)
+		return VerifyOutput{}, domain.NewInternal(domain.ErrorCodeTokenLookupFailed, "確認トークンの取得に失敗しました", err)
 	}
 
 	now := uc.clock.Now()
 	if record.IsExpired(now) {
 		_ = uc.tokens.DeleteByToken(ctx, tokenValue)
-		detail := domain.ErrorDetail{Field: "token", Code: "VERIFICATION_TOKEN_EXPIRED", Message: "確認リンクが無効または期限切れです"}
-		return VerifyOutput{}, domain.NewValidation("VERIFICATION_TOKEN_EXPIRED", "確認リンクが無効または期限切れです。再度登録をお試しください").WithDetails(detail)
+		detail := domain.ErrorDetail{Field: "token", Code: domain.ErrorCodeVerificationTokenExpired, Message: "確認リンクが無効または期限切れです"}
+		return VerifyOutput{}, domain.NewValidation(domain.ErrorCodeVerificationTokenExpired, "確認リンクが無効または期限切れです。再度登録をお試しください").WithDetails(detail)
 	}
 
 	exists, err := uc.users.ExistsByEmail(ctx, record.Email())
 	if err != nil {
-		return VerifyOutput{}, domain.NewInternal("USER_LOOKUP_FAILED", "ユーザー情報の取得に失敗しました", err)
+		return VerifyOutput{}, domain.NewInternal(domain.ErrorCodeUserLookupFailed, "ユーザー情報の取得に失敗しました", err)
 	}
 
 	if exists {
-		detail := domain.ErrorDetail{Field: "email", Code: "EMAIL_ALREADY_REGISTERED", Message: "このメールアドレスは既に登録されています"}
-		return VerifyOutput{}, domain.NewValidation("EMAIL_ALREADY_REGISTERED", "このメールアドレスは既に登録されています").WithDetails(detail)
+		detail := domain.ErrorDetail{Field: "email", Code: domain.ErrorCodeEmailAlreadyRegistered, Message: "このメールアドレスは既に登録されています"}
+		return VerifyOutput{}, domain.NewValidation(domain.ErrorCodeEmailAlreadyRegistered, "このメールアドレスは既に登録されています").WithDetails(detail)
 	}
 
 	newUser, err := user.NewUser(record.Email(), record.PasswordHash(), now)
@@ -100,11 +100,11 @@ func (uc *VerifyUsecase) Execute(ctx context.Context, in VerifyInput) (VerifyOut
 
 	if err := uc.tx.WithinTransaction(ctx, func(txCtx context.Context) error {
 		if err := uc.users.Create(txCtx, newUser); err != nil {
-			return domain.NewInternal("USER_CREATE_FAILED", "ユーザーの作成に失敗しました", err)
+			return domain.NewInternal(domain.ErrorCodeUserCreateFailed, "ユーザーの作成に失敗しました", err)
 		}
 
 		if err := uc.tokens.DeleteByToken(txCtx, tokenValue); err != nil {
-			return domain.NewInternal("TOKEN_DELETE_FAILED", "確認トークンの削除に失敗しました", err)
+			return domain.NewInternal(domain.ErrorCodeTokenDeleteFailed, "確認トークンの削除に失敗しました", err)
 		}
 		return nil
 	}); err != nil {
@@ -113,7 +113,7 @@ func (uc *VerifyUsecase) Execute(ctx context.Context, in VerifyInput) (VerifyOut
 
 	authToken, err := uc.issuer.Issue(ctx, newUser)
 	if err != nil {
-		return VerifyOutput{}, domain.NewInternal("AUTH_TOKEN_ISSUE_FAILED", "認証トークンの発行に失敗しました", err)
+		return VerifyOutput{}, domain.NewInternal(domain.ErrorCodeAuthTokenIssueFailed, "認証トークンの発行に失敗しました", err)
 	}
 
 	return VerifyOutput{

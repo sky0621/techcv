@@ -49,8 +49,8 @@ func (r *VerificationTokenRepository) FindByToken(_ context.Context, token strin
 		return t, nil
 	}
 
-	detail := domain.ErrorDetail{Field: "token", Code: "TOKEN_NOT_FOUND", Message: "確認トークンが見つかりません"}
-	return user.VerificationToken{}, domain.NewNotFound("TOKEN_NOT_FOUND", "確認トークンが見つかりません").WithDetails(detail)
+	detail := domain.ErrorDetail{Field: "token", Code: domain.ErrorCodeTokenNotFound, Message: "確認トークンが見つかりません"}
+	return user.VerificationToken{}, domain.NewNotFound(domain.ErrorCodeTokenNotFound, "確認トークンが見つかりません").WithDetails(detail)
 }
 
 // DeleteByToken removes a token using its value.

@@ -25,12 +25,12 @@ type User struct {
 // NewUser constructs a fully verified user aggregate.
 func NewUser(email Email, passwordHash string, now time.Time) (User, error) {
 	if passwordHash == "" {
-		return User{}, domain.NewInternal("INVALID_PASSWORD_HASH", "無効なパスワードハッシュです", fmt.Errorf("empty password hash"))
+		return User{}, domain.NewInternal(domain.ErrorCodeInvalidPasswordHash, "無効なパスワードハッシュです", fmt.Errorf("empty password hash"))
 	}
 
 	id, err := uuidv7.NewString()
 	if err != nil {
-		return User{}, domain.NewInternal("UUID_GENERATION_FAILED", "ユーザーIDの生成に失敗しました", err)
+		return User{}, domain.NewInternal(domain.ErrorCodeUUIDGenerationFailed, "ユーザーIDの生成に失敗しました", err)
 	}
 
 	ts := now.UTC().Truncate(time.Microsecond)

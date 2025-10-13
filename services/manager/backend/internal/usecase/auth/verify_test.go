@@ -64,7 +64,7 @@ func TestVerifyUsecase_TokenExpired(t *testing.T) {
 	}
 
 	var appErr *domain.AppError
-	if !errors.As(err, &appErr) || appErr.Code != "VERIFICATION_TOKEN_EXPIRED" {
+	if !errors.As(err, &appErr) || appErr.Code != domain.ErrorCodeVerificationTokenExpired {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -81,7 +81,7 @@ func TestVerifyUsecase_TokenNotFound(t *testing.T) {
 	_, err := uc.Execute(context.Background(), VerifyInput{Token: "unknown"})
 
 	var appErr *domain.AppError
-	if err == nil || !errors.As(err, &appErr) || appErr.Code != "TOKEN_NOT_FOUND" {
+	if err == nil || !errors.As(err, &appErr) || appErr.Code != domain.ErrorCodeTokenNotFound {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -107,7 +107,7 @@ func TestVerifyUsecase_EmailAlreadyRegistered(t *testing.T) {
 	}
 
 	var appErr *domain.AppError
-	if !errors.As(err, &appErr) || appErr.Code != "EMAIL_ALREADY_REGISTERED" {
+	if !errors.As(err, &appErr) || appErr.Code != domain.ErrorCodeEmailAlreadyRegistered {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
