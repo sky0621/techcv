@@ -4,8 +4,6 @@ GOLANGCI_LINT_VERSION ?= v1.60.2
 TOOLS_BIN := $(PWD)/bin-tools
 GOLANGCI_LINT := $(TOOLS_BIN)/golangci-lint
 
-export GOTOOLCHAIN=local
-
 .PHONY: help run build test tidy lint generate-openapi golangci-lint-install fmt
 
 help:
