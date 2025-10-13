@@ -1,8 +1,0 @@
-./email.go
-./password.go
-./repository.go
-./user.go
-./verification_token.go
-./email_test.go
-./password_test.go
-./verification_token_test.go

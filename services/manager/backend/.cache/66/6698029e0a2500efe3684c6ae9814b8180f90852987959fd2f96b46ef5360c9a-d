@@ -1,5 +1,0 @@
-./interfaces.go
-./register.go
-./verify.go
-./register_test.go
-./verify_test.go
