@@ -7,31 +7,85 @@ run:
 
 linters:
   enable:
-    # Standard: https://golangci-lint.run/usage/linters/#enabled-by-default
-    #   unused は staticcheck で賄えるため省略
-    - errcheck         # 戻り値のエラー無視を検出
-    - govet            # go標準ツール。バグの可能性が高いコードを検出
-    - ineffassign      # 無意味な変数代入を検出
-    - staticcheck      # 包括的なリンター（バグ、パフォーマンス問題、不適切なライブラリ使用、Goのベストプラクティス違反等を検出）
-    # 以下は個別追加
-    - bodyclose        # HTTPレスポンスの Body が適切にクローズされていない問題を検出
-    - depguard         # 使用可能or禁止ライブラリのルール違反を検出
-    - dogsled          # 「_」使用過多を検出
-    - dupl             # コード内の重複（duplicate）を検出
-    - exhaustive       # switch内の網羅不備を検出
-    - gochecknoinits   # init()関数の使用を検出
-    - goconst          # 頻出する文字列・数値リテラルを検出
-    - gocritic         # 包括的なリンター（バグ、コーディングスタイル違反等を検出）
-    - gocyclo          # 循環的複雑度が高いものを検出
-    - goprintffuncname # printf系関数の命名規則違反を検出
-    - gosec            # セキュリティ脆弱性を検出
-    - lll              # 1行あたりの文字数制限違反を検出
-    - misspell         # スペルミスを検出
-    - mnd              # マジックナンバーを検出
-    - nakedret         # 名前付き戻り値使用関数での値なしreturnを検出
-    - noctx            # HTTP関連処理でのcontext.Context未使用を検出
-    - nolintlint       # 不適切なnolintコメントを検出
-    - rowserrcheck     # SQLクエリのrows.Err()チェック漏れを検出
-    - unconvert        # 不要な型変換を検出
-    - unparam          # 未使用関数パラメータを検出
-    - whitespace       # 空白文字の不適切使用を検出
+    # https://golangci-lint.run/usage/linters/#enabled-by-default
+    - errcheck         # 戻り値エラー無視
+    - ineffassign      # 無意味な変数代入
+    - staticcheck      # 包括的リンター
+    # other
+    - bodyclose        # HTTPレスポンスBodyの未クローズ
+    - depguard         # ライブラリのルール違反
+    - dogsled          # 「_」使用過多
+    - dupl             # コード内の重複（duplicate）
+    - exhaustive       # switch内の網羅不備
+    - gochecknoinits   # init()関数の使用
+    - goconst          # 頻出する文字列・数値リテラル
+    - gocyclo          # 循環的複雑度
+    - goprintffuncname # printf系関数の命名規則違反
+    - gosec            # セキュリティ脆弱性
+    - lll              # 1行あたりの文字数制限違反
+    - misspell         # スペルミス
+    - mnd              # マジックナンバー
+    - nakedret         # 名前付き戻り値使用関数での値なしreturn
+    - noctx            # HTTP関連処理でのcontext.Context未使用
+    - nolintlint       # 不適切なnolintコメント
+    - rowserrcheck     # SQLクエリのrows.Err()チェック漏れ
+    - unconvert        # 不要な型変換
+    - unparam          # 未使用関数パラメータ
+    - whitespace       # 空白文字の不適切使用
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: "io/ioutil"
+              desc: "Go 1.16+では io と os パッケージを使用"
+    dupl:
+      threshold: 100
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocritic:
+      enabled-tags:
+        - diagnostic    # バグ検出系
+        - style         # スタイル系
+      disabled-tags:
+        - experimental  # 実験的なチェック
+        - opinionated   # 主観的なチェック
+        - performance   # パフォーマンス系
+      disabled-checks: []
+    gocyclo:
+      min-complexity: 15
+    govet:
+      enable:
+        - shadow      # シャドウイング検出
+        - assign      # 代入チェック
+        - atomic      # アトミック操作チェック
+        - bools       # bool条件チェック
+        - buildtag    # ビルドタグチェック
+    lll:
+      line-length: 160  # 1行あたりの許容文字数
+    misspell:
+      locale: US
+    mnd:
+      checks:
+        - argument    # 関数の引数
+        - case        # switch文のcase
+        - condition   # if文の条件
+        - operation   # 演算処理
+        - return      # return文
+        - assign      # 代入文
+      ignored-numbers:
+        - '0'
+        - '1'
+        - '2'
+        - '3'
+      ignored-files: []
+      ignored-functions: []
+    staticcheck:
+      checks: [ "all" ]
+  exclusions:
+    generated: lax # ライブラリ等による自動生成ファイルを除外
+    paths:
+      - vendor
+      - bin
+      - cmd/utils
