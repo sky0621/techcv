@@ -38,7 +38,7 @@ imports-install: ## Install goimports locally
 imports: imports-install ## Run goimports on Go files
 	$(GOIMPORTS) -w $(shell find . -name '*.go' -not -path './vendor/*' -not -path './bin-tools/*')
 
-lint: golangci-lint-install ## Run golangci-lint
+lint: lint-install ## Run golangci-lint
 	$(GOLANGCI_LINT) run
 
 gen-api: ## Generate Go sources from OpenAPI specification
