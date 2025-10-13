@@ -1,0 +1,13 @@
+type: object
+required:
+  - message
+  - auth_token
+  - user
+properties:
+  message:
+    type: string
+  auth_token:
+    type: string
+    description: Token representing the authenticated session
+  user:
+    $ref: ./AuthenticatedUser.yaml

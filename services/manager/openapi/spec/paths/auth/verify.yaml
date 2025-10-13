@@ -1,0 +1,37 @@
+post:
+  tags:
+    - Auth
+  summary: Verify registration token and create account
+  operationId: verifyRegistration
+  description: Validates a verification token and finalizes user registration.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/VerifyRequest.yaml
+  responses:
+    '200':
+      description: User verified and authenticated successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/VerifySuccessResponse.yaml
+    '400':
+      description: Invalid or expired verification token
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/ErrorResponse.yaml
+    '404':
+      description: Verification token not found
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/ErrorResponse.yaml

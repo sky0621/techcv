@@ -1,4 +1,4 @@
-url: http://localhost:{port}/api
+url: http://localhost:{port}/techcv/api/v1
 description: Local development server
 variables:
   port:

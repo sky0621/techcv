@@ -3,8 +3,8 @@ info:
   title: Manager API
   version: 1.0.0
   description: |
-    OpenAPI specification for the Manager service. The API exposes endpoints for
-    checking service health and handling guest registration via email verification.
+    OpenAPI specification for the Manager service. The API exposes health checking and
+    guest registration endpoints that allow users to sign up with email verification.
 servers:
   - url: http://localhost:{port}/techcv/api/v1
     description: Local development server
@@ -44,6 +44,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                error:
+                  summary: Error envelope
+                  value:
+                    status: error
+                    error:
+                      requestId: abc123
+                      code: internal_error
+                      message: unexpected server error
   /auth/register:
     post:
       tags:
@@ -136,6 +145,8 @@ components:
         data:
           description: Payload returned when the request succeeds
           nullable: true
+        error:
+          $ref: '#/components/schemas/ErrorBody'
         meta:
           description: Additional metadata for the response
           nullable: true

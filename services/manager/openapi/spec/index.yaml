@@ -5,9 +5,14 @@ servers:
   - $ref: ./servers/local.yaml
 tags:
   - $ref: ./tags/health.yaml
+  - $ref: ./tags/auth.yaml
 paths:
   /health:
     $ref: ./paths/health.yaml
+  /auth/register:
+    $ref: ./paths/auth/register.yaml
+  /auth/verify:
+    $ref: ./paths/auth/verify.yaml
 components:
   schemas:
     ResponseEnvelope:
@@ -20,3 +25,19 @@ components:
       $ref: ./components/schemas/HealthSuccessResponse.yaml
     ErrorResponse:
       $ref: ./components/schemas/ErrorResponse.yaml
+    ErrorDetail:
+      $ref: ./components/schemas/ErrorDetail.yaml
+    RegisterRequest:
+      $ref: ./components/schemas/RegisterRequest.yaml
+    RegisterSuccessData:
+      $ref: ./components/schemas/RegisterSuccessData.yaml
+    RegisterSuccessResponse:
+      $ref: ./components/schemas/RegisterSuccessResponse.yaml
+    VerifyRequest:
+      $ref: ./components/schemas/VerifyRequest.yaml
+    AuthenticatedUser:
+      $ref: ./components/schemas/AuthenticatedUser.yaml
+    VerifySuccessData:
+      $ref: ./components/schemas/VerifySuccessData.yaml
+    VerifySuccessResponse:
+      $ref: ./components/schemas/VerifySuccessResponse.yaml
