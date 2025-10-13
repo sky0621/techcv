@@ -55,18 +55,16 @@ func (h *Handler) GetHealth(c echo.Context) error {
 		return err
 	}
 
-	response := openapi.HealthResponseEnvelope{
-		Status: "success",
-		Data: openapi.HealthStatus{
-			Status:    status.Status,
-			CheckedAt: status.CheckedAt,
-		},
-		Meta: map[string]interface{}{
-			"requestId": c.Response().Header().Get(echo.HeaderXRequestID),
-		},
+	data := map[string]interface{}{
+		"status":     status.Status,
+		"checked_at": status.CheckedAt,
 	}
 
-	return c.JSON(http.StatusOK, response)
+	meta := map[string]interface{}{
+		"requestId": c.Response().Header().Get(echo.HeaderXRequestID),
+	}
+
+	return response.Success(c, http.StatusOK, data, meta)
 }
 
 // PostAuthRegister handles guest registration.
