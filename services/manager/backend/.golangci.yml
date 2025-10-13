@@ -1,10 +1,26 @@
+version: 2
 run:
   timeout: 5m
+  tests: true
+linters-settings:
+  govet:
+    enable:
+      - shadow
+  gocyclo:
+    min-complexity: 12
+  lll:
+    line-length: 140
+  revive:
+    severity: warning
 linters:
   enable:
     - govet
     - ineffassign
-  disable:
     - staticcheck
     - gosimple
     - unused
+    - errcheck
+    - gocyclo
+    - revive
+    - lll
+    - gofmt
