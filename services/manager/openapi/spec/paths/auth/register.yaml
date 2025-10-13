@@ -1,0 +1,40 @@
+post:
+  tags:
+    - Auth
+  summary: Initiate email based registration
+  operationId: registerUser
+  description: |
+    Registers a guest using an email address and password. A verification email with a
+    confirmation link is sent to the provided address. Registration is completed after
+    the link is opened within the expiration window.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/RegisterRequest.yaml
+  responses:
+    '200':
+      description: Verification email dispatched successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/RegisterSuccessResponse.yaml
+    '400':
+      description: Invalid input supplied
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/ErrorResponse.yaml
+    '409':
+      description: Email already registered
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/ErrorResponse.yaml

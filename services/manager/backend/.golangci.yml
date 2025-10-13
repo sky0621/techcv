@@ -1,0 +1,91 @@
+version: "2"
+
+run:
+  timeout: 5m
+  issues-exit-code: 1  # 問題検出時にプロセス終了コードを 1 にする
+  tests: true          # テストコードもチェック対象
+
+linters:
+  enable:
+    # https://golangci-lint.run/usage/linters/#enabled-by-default
+    - errcheck         # 戻り値エラー無視
+    - ineffassign      # 無意味な変数代入
+    - staticcheck      # 包括的リンター
+    # other
+    - bodyclose        # HTTPレスポンスBodyの未クローズ
+    - depguard         # ライブラリのルール違反
+    - dogsled          # 「_」使用過多
+    - dupl             # コード内の重複（duplicate）
+    - exhaustive       # switch内の網羅不備
+    - gochecknoinits   # init()関数の使用
+    - goconst          # 頻出する文字列・数値リテラル
+    - gocyclo          # 循環的複雑度
+    - goprintffuncname # printf系関数の命名規則違反
+    - gosec            # セキュリティ脆弱性
+    - lll              # 1行あたりの文字数制限違反
+    - misspell         # スペルミス
+    - mnd              # マジックナンバー
+    - nakedret         # 名前付き戻り値使用関数での値なしreturn
+    - noctx            # HTTP関連処理でのcontext.Context未使用
+    - nolintlint       # 不適切なnolintコメント
+    - rowserrcheck     # SQLクエリのrows.Err()チェック漏れ
+    - unconvert        # 不要な型変換
+    - unparam          # 未使用関数パラメータ
+    - whitespace       # 空白文字の不適切使用
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: "io/ioutil"
+              desc: "Go 1.16+では io と os パッケージを使用"
+    dupl:
+      threshold: 100
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocritic:
+      enabled-tags:
+        - diagnostic    # バグ検出系
+        - style         # スタイル系
+      disabled-tags:
+        - experimental  # 実験的なチェック
+        - opinionated   # 主観的なチェック
+        - performance   # パフォーマンス系
+      disabled-checks: []
+    gocyclo:
+      min-complexity: 15
+    govet:
+      enable:
+        - shadow      # シャドウイング検出
+        - assign      # 代入チェック
+        - atomic      # アトミック操作チェック
+        - bools       # bool条件チェック
+        - buildtag    # ビルドタグチェック
+    lll:
+      line-length: 160  # 1行あたりの許容文字数
+    misspell:
+      locale: US
+    mnd:
+      checks:
+        - argument    # 関数の引数
+        - case        # switch文のcase
+        - condition   # if文の条件
+        - operation   # 演算処理
+        - return      # return文
+        - assign      # 代入文
+      ignored-numbers:
+        - '0'
+        - '1'
+        - '2'
+        - '3'
+      ignored-files: []
+      ignored-functions: []
+    staticcheck:
+      checks: [ "all" ]
+  exclusions:
+    generated: lax # ライブラリ等による自動生成ファイルを除外
+    paths:
+      - vendor
+      - bin
+      - cmd/utils

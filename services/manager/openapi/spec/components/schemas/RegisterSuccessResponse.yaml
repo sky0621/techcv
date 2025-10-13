@@ -1,0 +1,10 @@
+allOf:
+  - $ref: ./ResponseEnvelope.yaml
+  - type: object
+    properties:
+      status:
+        type: string
+        enum:
+          - success
+      data:
+        $ref: ./RegisterSuccessData.yaml

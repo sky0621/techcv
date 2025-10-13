@@ -1,9 +1,11 @@
+import { Link } from '@tanstack/react-router';
+
 import { Button } from '@/components/ui/button';
 import { appConfig } from '@/lib/env';
 
 export const LoginPage = (): JSX.Element => {
   const handleLogin = () => {
-    const redirectUrl = `${appConfig.apiBaseUrl}/api/v1/auth/google/login`;
+    const redirectUrl = `${appConfig.apiBaseUrl}/techcv/api/v1/auth/google/login`;
     window.location.href = redirectUrl;
   };
 
@@ -19,6 +21,13 @@ export const LoginPage = (): JSX.Element => {
         <Button className="mt-8 w-full" onClick={handleLogin}>
           Googleでサインイン
         </Button>
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          メールアドレスでの登録は{' '}
+          <Link className="font-medium text-primary underline" to="/register">
+            こちら
+          </Link>
+          から行えます。
+        </p>
       </div>
     </div>
   );

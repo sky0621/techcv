@@ -1,3 +1,4 @@
+// Package server wraps the HTTP server and graceful shutdown logic.
 package server
 
 import (
@@ -9,6 +10,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 )
+
+const shutdownTimeout = 10 * time.Second
 
 // Server wraps an Echo instance and manages graceful shutdown.
 type Server struct {
@@ -31,7 +34,7 @@ func (s *Server) Start(ctx context.Context, addr string) error {
 
 	select {
 	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
 
 		if err := s.app.Shutdown(shutdownCtx); err != nil {

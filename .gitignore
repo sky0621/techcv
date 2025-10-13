@@ -1,4 +1,6 @@
 .idea
 bin
+bin-tools/
 node_modules
 **/.gomodcache
+**/.cache/

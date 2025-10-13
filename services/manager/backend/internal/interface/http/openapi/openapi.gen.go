@@ -3,29 +3,81 @@
 package openapi
 
 import (
-	"github.com/labstack/echo/v4"
 	"time"
+
+	"github.com/labstack/echo/v4"
 )
 
-type HealthResponseEnvelope struct {
-	Data   HealthStatus                 `json:"data"`
-	Error  *HealthResponseEnvelopeError `json:"error"`
-	Meta   map[string]interface{}       `json:"meta"`
-	Status string                       `json:"status"`
+type AuthenticatedUser struct {
+	Bio             *string    `json:"bio"`
+	CreatedAt       time.Time  `json:"created_at"`
+	Email           string     `json:"email"`
+	EmailVerifiedAt time.Time  `json:"email_verified_at"`
+	Id              string     `json:"id"`
+	IsActive        bool       `json:"is_active"`
+	LastLoginAt     *time.Time `json:"last_login_at"`
+	Name            *string    `json:"name"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
+
+type ErrorBody struct {
+	Code      *string       `json:"code"`
+	Details   []interface{} `json:"details"`
+	Message   *string       `json:"message"`
+	RequestId string        `json:"requestId"`
+}
+
+type ErrorDetail struct {
+	Code    *string `json:"code"`
+	Field   *string `json:"field"`
+	Message *string `json:"message"`
+}
+
+type ErrorResponse interface{}
 
 type HealthStatus struct {
 	CheckedAt time.Time `json:"checked_at"`
 	Status    string    `json:"status"`
 }
 
-type HealthResponseEnvelopeError struct {
-	Code    *string `json:"code"`
-	Message *string `json:"message"`
+type HealthSuccessResponse interface{}
+
+type RegisterRequest struct {
+	Email                string `json:"email"`
+	Password             string `json:"password"`
+	PasswordConfirmation string `json:"password_confirmation"`
 }
+
+type RegisterSuccessData struct {
+	ExpiresAt time.Time `json:"expires_at"`
+	Message   string    `json:"message"`
+}
+
+type RegisterSuccessResponse interface{}
+
+type ResponseEnvelope struct {
+	Data   *interface{} `json:"data"`
+	Error  *interface{} `json:"error"`
+	Meta   *interface{} `json:"meta"`
+	Status string       `json:"status"`
+}
+
+type VerifyRequest struct {
+	Token string `json:"token"`
+}
+
+type VerifySuccessData struct {
+	AuthToken string      `json:"auth_token"`
+	Message   string      `json:"message"`
+	User      interface{} `json:"user"`
+}
+
+type VerifySuccessResponse interface{}
 
 type ServerInterface interface {
 	GetHealth(ctx echo.Context) error
+	PostAuthRegister(ctx echo.Context) error
+	PostAuthVerify(ctx echo.Context) error
 }
 
 func RegisterHandlers(g *echo.Group, si ServerInterface) {
@@ -37,4 +89,6 @@ func RegisterHandlers(g *echo.Group, si ServerInterface) {
 	}
 
 	g.GET("/health", si.GetHealth)
+	g.POST("/auth/register", si.PostAuthRegister)
+	g.POST("/auth/verify", si.PostAuthVerify)
 }
