@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/mysql/sqlc"
+	mysqlsqlc "github.com/sky0621/techcv/manager/backend/internal/infrastructure/mysql/sqlc"
 )
 
 // HealthRepository provides database-backed health checks.

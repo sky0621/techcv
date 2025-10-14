@@ -8,7 +8,7 @@ import (
 	"math"
 
 	"github.com/sky0621/techcv/manager/backend/internal/domain"
-	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/mysql/sqlc"
+	mysqlsqlc "github.com/sky0621/techcv/manager/backend/internal/infrastructure/mysql/sqlc"
 )
 
 // PublicURLRepository persists public URL entities in MySQL.

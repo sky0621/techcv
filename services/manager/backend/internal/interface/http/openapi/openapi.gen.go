@@ -3,8 +3,9 @@
 package openapi
 
 import (
-	"github.com/labstack/echo/v4"
 	"time"
+
+	"github.com/labstack/echo/v4"
 )
 
 type AuthenticatedUser struct {

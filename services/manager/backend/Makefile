@@ -7,7 +7,6 @@ GOLANGCI_LINT_VERSION ?= v2.5.0
 TOOLS_BIN := $(CURDIR)/bin-tools
 GOLANGCI_LINT := $(TOOLS_BIN)/golangci-lint
 GOIMPORTS := $(TOOLS_BIN)/goimports
-GOIMPORTS_VERSION ?= latest
 
 .PHONY: help
 help:
@@ -67,11 +66,16 @@ lint-install: ## Install golangci-lint locally
 
 .PHONY: fmt
 fmt: ## Run gofmt on Go files
-	gofmt -w $(shell find . -name '*.go' -not -path './vendor/*' -not -path './bin-tools/*')
+	go fmt ./...
 
 .PHONY: imports-install
 imports-install: ## Install goimports locally
-	GOBIN=$(TOOLS_BIN) go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
+	GOCACHE=$(CURDIR)/.cache GOBIN=$(TOOLS_BIN) go install golang.org/x/tools/cmd/goimports
+	rm -rf $(CURDIR)/.cache
+
+.PHONY: goimports
+goimports: imports-install ## Run goimports on Go files
+	$(GOIMPORTS) -w $(shell find . -name '*.go' -not -path './vendor/*' -not -path './bin-tools/*' -not -path './.gomodcache/*')
 
 .PHONY: imports
 imports: goimports ## Backward compatibility alias
@@ -80,3 +84,13 @@ imports: goimports ## Backward compatibility alias
 lint: download lint-install ## Run golangci-lint
 	GOCACHE=$(CURDIR)/.cache GOLANGCI_LINT_CACHE=$(CURDIR)/.cache/golangci-lint $(GOLANGCI_LINT) run
 	rm -rf $(CURDIR)/.cache
+
+.PHONY: check
+check:
+	make tidy
+	make download
+	make fmt
+	make imports
+	make lint
+	make build
+	make test
