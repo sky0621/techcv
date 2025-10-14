@@ -1,16 +1,27 @@
+# sqlc configuration file version
 version: "2"
 sql:
+  # single MySQL project definition
   - engine: "mysql"
+    # canonical schema definition used to derive the models
     schema: "db/schema.sql"
+    # directory containing query files generating methods
     queries: "db/queries"
     gen:
       go:
+        # generated package name
         package: mysqlsqlc
+        # output directory for generated Go code
         out: internal/infrastructure/mysql/sqlc
+        # standard database/sql package is used for connectivity
         sql_package: database/sql
+        # include json struct tags to ease response marshalling
         emit_json_tags: true
+        # keep raw queries (no prepared statement helpers)
         emit_prepared_queries: false
+        # do not emit repository interfaces automatically
         emit_interface: false
         overrides:
+          # map tinyint columns to Go bools
           - db_type: mysql:tinyint
             go_type: bool
