@@ -13,7 +13,11 @@ func TestHealthRepositoryPing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create sqlmock: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			t.Fatalf("failed to close db: %v", closeErr)
+		}
+	}()
 
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT 1 AS ok")).
 		WillReturnRows(sqlmock.NewRows([]string{"ok"}).AddRow(int32(1)))

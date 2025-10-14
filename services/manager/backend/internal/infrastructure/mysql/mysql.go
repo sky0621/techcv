@@ -1,3 +1,4 @@
+// Package mysql provides MySQL infrastructure components for the manager service.
 package mysql
 
 import (
@@ -44,11 +45,18 @@ func NewConnection(ctx context.Context, cfg Config) (*sql.DB, error) {
 		return nil, err
 	}
 
-	db.SetConnMaxLifetime(5 * time.Minute)
-	db.SetMaxOpenConns(20)
-	db.SetMaxIdleConns(10)
+	const (
+		connMaxLifetime = 5 * time.Minute
+		maxOpenConns    = 20
+		maxIdleConns    = 10
+		pingTimeout     = 5 * time.Second
+	)
 
-	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	db.SetConnMaxLifetime(connMaxLifetime)
+	db.SetMaxOpenConns(maxOpenConns)
+	db.SetMaxIdleConns(maxIdleConns)
+
+	pingCtx, cancel := context.WithTimeout(ctx, pingTimeout)
 	defer cancel()
 
 	if err := db.PingContext(pingCtx); err != nil {

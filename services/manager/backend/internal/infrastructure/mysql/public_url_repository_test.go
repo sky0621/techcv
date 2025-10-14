@@ -10,10 +10,34 @@ import (
 )
 
 const (
-	getActivePublicURLQuery  = "-- name: GetActivePublicURL :one\nSELECT\n  id,\n  url_key,\n  is_active,\n  created_at,\n  updated_at\nFROM public_urls\nWHERE is_active = TRUE\nORDER BY updated_at DESC\nLIMIT 1\n"
-	createPublicURLQuery     = "-- name: CreatePublicURL :execresult\nINSERT INTO public_urls (url_key)\nVALUES (?)\n"
-	listPublicURLsQuery      = "-- name: ListPublicURLs :many\nSELECT\n  id,\n  url_key,\n  is_active,\n  created_at,\n  updated_at\nFROM public_urls\nORDER BY updated_at DESC\n"
-	deactivatePublicURLQuery = "-- name: DeactivatePublicURL :exec\nUPDATE public_urls\nSET is_active = FALSE,\n    updated_at = CURRENT_TIMESTAMP(6)\nWHERE id = ?\n"
+	getActivePublicURLQuery = "-- name: GetActivePublicURL :one\n" +
+		"SELECT\n" +
+		"  id,\n" +
+		"  url_key,\n" +
+		"  is_active,\n" +
+		"  created_at,\n" +
+		"  updated_at\n" +
+		"FROM public_urls\n" +
+		"WHERE is_active = TRUE\n" +
+		"ORDER BY updated_at DESC\n" +
+		"LIMIT 1\n"
+	createPublicURLQuery = "-- name: CreatePublicURL :execresult\n" +
+		"INSERT INTO public_urls (url_key)\n" +
+		"VALUES (?)\n"
+	listPublicURLsQuery = "-- name: ListPublicURLs :many\n" +
+		"SELECT\n" +
+		"  id,\n" +
+		"  url_key,\n" +
+		"  is_active,\n" +
+		"  created_at,\n" +
+		"  updated_at\n" +
+		"FROM public_urls\n" +
+		"ORDER BY updated_at DESC\n"
+	deactivatePublicURLQuery = "-- name: DeactivatePublicURL :exec\n" +
+		"UPDATE public_urls\n" +
+		"SET is_active = FALSE,\n" +
+		"    updated_at = CURRENT_TIMESTAMP(6)\n" +
+		"WHERE id = ?\n"
 )
 
 func TestPublicURLRepositoryGetActive(t *testing.T) {
@@ -21,12 +45,16 @@ func TestPublicURLRepositoryGetActive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create sqlmock: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			t.Fatalf("failed to close db: %v", closeErr)
+		}
+	}()
 
 	now := time.Now()
 	rows := sqlmock.
 		NewRows([]string{"id", "url_key", "is_active", "created_at", "updated_at"}).
-		AddRow(uint64(1), "active-key", true, now, now)
+		AddRow(int64(1), "active-key", true, now, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(getActivePublicURLQuery)).WillReturnRows(rows)
 
@@ -50,7 +78,11 @@ func TestPublicURLRepositoryCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create sqlmock: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			t.Fatalf("failed to close db: %v", closeErr)
+		}
+	}()
 
 	mock.ExpectExec(regexp.QuoteMeta(createPublicURLQuery)).
 		WithArgs("new-key").
@@ -76,13 +108,17 @@ func TestPublicURLRepositoryList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create sqlmock: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			t.Fatalf("failed to close db: %v", closeErr)
+		}
+	}()
 
 	now := time.Now()
 	rows := sqlmock.
 		NewRows([]string{"id", "url_key", "is_active", "created_at", "updated_at"}).
-		AddRow(uint64(1), "first", true, now, now).
-		AddRow(uint64(2), "second", false, now, now)
+		AddRow(int64(1), "first", true, now, now).
+		AddRow(int64(2), "second", false, now, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listPublicURLsQuery)).WillReturnRows(rows)
 
@@ -110,10 +146,14 @@ func TestPublicURLRepositoryDeactivate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create sqlmock: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			t.Fatalf("failed to close db: %v", closeErr)
+		}
+	}()
 
 	mock.ExpectExec(regexp.QuoteMeta(deactivatePublicURLQuery)).
-		WithArgs(uint64(5)).
+		WithArgs(int64(5)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	repo := NewPublicURLRepository(db)

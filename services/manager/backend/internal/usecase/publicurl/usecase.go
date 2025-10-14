@@ -1,3 +1,4 @@
+// Package publicurl provides use cases for managing public profile URLs.
 package publicurl
 
 import (
@@ -62,13 +63,13 @@ func (u *Usecase) Generate(ctx context.Context) (*domain.PublicURL, error) {
 	}
 
 	if active != nil {
-		if err := u.repo.Deactivate(ctx, active.ID); err != nil {
-			return nil, domain.NewInternal("public_url.deactivate_failed", "failed to deactivate existing public URL", err)
+		if deactivateErr := u.repo.Deactivate(ctx, active.ID); deactivateErr != nil {
+			return nil, domain.NewInternal("public_url.deactivate_failed", "failed to deactivate existing public URL", deactivateErr)
 		}
 	}
 
-	if _, err := u.repo.Create(ctx, key); err != nil {
-		return nil, domain.NewInternal("public_url.create_failed", "failed to create public URL", err)
+	if _, createErr := u.repo.Create(ctx, key); createErr != nil {
+		return nil, domain.NewInternal("public_url.create_failed", "failed to create public URL", createErr)
 	}
 
 	created, err := u.repo.GetActive(ctx)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"math"
 
 	"github.com/sky0621/techcv/manager/backend/internal/domain"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/mysql/sqlc"
@@ -33,6 +35,10 @@ func (r *PublicURLRepository) Create(ctx context.Context, urlKey string) (uint64
 		return 0, err
 	}
 
+	if id < 0 {
+		return 0, fmt.Errorf("received negative last insert id: %d", id)
+	}
+
 	return uint64(id), nil
 }
 
@@ -46,7 +52,11 @@ func (r *PublicURLRepository) GetActive(ctx context.Context) (*domain.PublicURL,
 		return nil, err
 	}
 
-	entity := toDomainPublicURL(record)
+	entity, err := toDomainPublicURL(record)
+	if err != nil {
+		return nil, fmt.Errorf("convert record to domain model: %w", err)
+	}
+
 	return &entity, nil
 }
 
@@ -59,7 +69,11 @@ func (r *PublicURLRepository) List(ctx context.Context) ([]domain.PublicURL, err
 
 	result := make([]domain.PublicURL, 0, len(records))
 	for _, record := range records {
-		result = append(result, toDomainPublicURL(record))
+		entity, err := toDomainPublicURL(record)
+		if err != nil {
+			return nil, fmt.Errorf("convert record to domain model: %w", err)
+		}
+		result = append(result, entity)
 	}
 
 	return result, nil
@@ -67,15 +81,22 @@ func (r *PublicURLRepository) List(ctx context.Context) ([]domain.PublicURL, err
 
 // Deactivate marks the specified public URL as inactive.
 func (r *PublicURLRepository) Deactivate(ctx context.Context, id uint64) error {
-	return r.queries.DeactivatePublicURL(ctx, id)
+	if id > math.MaxInt64 {
+		return fmt.Errorf("public URL id %d exceeds max int64", id)
+	}
+	return r.queries.DeactivatePublicURL(ctx, int64(id))
 }
 
-func toDomainPublicURL(model mysqlsqlc.PublicUrl) domain.PublicURL {
+func toDomainPublicURL(model mysqlsqlc.PublicUrl) (domain.PublicURL, error) {
+	if model.ID < 0 {
+		return domain.PublicURL{}, fmt.Errorf("public URL id must be non-negative: %d", model.ID)
+	}
+
 	return domain.PublicURL{
-		ID:        model.ID,
+		ID:        uint64(model.ID),
 		URLKey:    model.UrlKey,
 		IsActive:  model.IsActive,
 		CreatedAt: model.CreatedAt,
 		UpdatedAt: model.UpdatedAt,
-	}
+	}, nil
 }

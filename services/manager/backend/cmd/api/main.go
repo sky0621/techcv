@@ -69,10 +69,6 @@ func main() {
 
 	healthRepo := mysql.NewHealthRepository(db)
 	healthUsecase := health.New(healthRepo)
-	healthHandler := handler.NewHealthHandler(healthUsecase)
-	api := e.Group("/api")
-	healthHandler.Register(api)
-
 	clockProvider := clock.NewSystemClock()
 	userRepo := memory.NewUserRepository()
 	verificationRepo := memory.NewVerificationTokenRepository()
@@ -85,13 +81,12 @@ func main() {
 		VerificationTTL:     defaultVerificationTTL,
 	}
 
-	healthUsecase := health.New()
 	registerUsecase := auth.NewRegisterUsecase(userRepo, verificationRepo, mailer, clockProvider, registerConfig)
 	verifyUsecase := auth.NewVerifyUsecase(userRepo, verificationRepo, txManager, clockProvider, tokenIssuer)
 	apiHandler := handler.NewHandler(healthUsecase, registerUsecase, verifyUsecase)
 
-	api := e.Group("/techcv/api/v1")
-	apiHandler.Register(api)
+	apiGroup := e.Group("/techcv/api/v1")
+	apiHandler.Register(apiGroup)
 
 	srv := server.New(e, log)
 
