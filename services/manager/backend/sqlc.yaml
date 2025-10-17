@@ -1,0 +1,16 @@
+version: "2" # sqlc設定ファイルのバージョン番号
+sql: # 生成対象となるプロジェクト定義の配列
+  - engine: "mysql" # 利用するデータベースエンジン
+    schema: "db/schema.sql" # スキーマ定義ファイルのパス
+    queries: "db/queries" # SQLクエリを記述したディレクトリ
+    gen: # 各言語ごとの生成設定
+      go: # Goコード向けの生成オプション
+        package: mysqlsqlc # 生成されるGoパッケージ名
+        out: internal/infrastructure/mysql/sqlc # 生成コードを配置するディレクトリ
+        sql_package: database/sql # 利用する標準のSQLパッケージ
+        emit_json_tags: true # 構造体にjsonタグを付与する
+        emit_prepared_queries: false # プレースホルダー付きの補助関数を生成しない
+        emit_interface: false # クエリのインターフェース定義を生成しない
+        overrides: # 型マッピングの上書き設定
+          - db_type: mysql:tinyint # MySQLのtinyint型を
+            go_type: bool # Goのbool型として扱う

@@ -15,14 +15,14 @@ import (
 )
 
 const (
-	schemaTypeObject    = "object"
-	schemaTypeString    = "string"
-	schemaTypeInteger   = "integer"
-	schemaTypeNumber    = "number"
-	schemaTypeBoolean   = "boolean"
-	schemaTypeArray     = "array"
+	schemaTypeObject     = "object"
+	schemaTypeString     = "string"
+	schemaTypeInteger    = "integer"
+	schemaTypeNumber     = "number"
+	schemaTypeBoolean    = "boolean"
+	schemaTypeArray      = "array"
 	schemaFormatDateTime = "date-time"
-	outputDirPermission = 0o750
+	outputDirPermission  = 0o750
 	outputFilePermission = 0o600
 )
 

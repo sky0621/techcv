@@ -5,9 +5,67 @@ services:
     command: go run ./cmd/api
     environment:
       - APP_ENV=${APP_ENV:-development}
-      - PORT=8080
+      - PORT=${PORT:-8080}
+      - DB_HOST=${DB_HOST:-127.0.0.1}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME:-manager}
+      - DB_USER=${DB_USER:-manager}
+      - DB_PASSWORD=${DB_PASSWORD:-manager}
+      - DB_PARAMS=${DB_PARAMS:-parseTime=true&loc=UTC&charset=utf8mb4}
     ports:
       - "${PORT:-8080}:8080"
     volumes:
       - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
+
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=${DB_NAME:-manager}
+      - MYSQL_USER=${DB_USER:-manager}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-manager}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-root}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  sqldef:
+    profiles:
+      - tools
+    image: ghcr.io/sqldef/sqldef:latest
+    working_dir: /work
+    entrypoint: ["mysqldef"]
+    environment:
+      - MYSQL_PWD=${DB_PASSWORD:-manager}
+    command:
+      - -h
+      - db
+      - -P
+      - "3306"
+      - -u
+      - ${DB_USER:-manager}
+      - ${DB_NAME:-manager}
+      - --file
+      - db/schema.sql
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./db:/work/db
+
+volumes:
+  mysql-data:
