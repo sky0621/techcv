@@ -1,13 +1,19 @@
+# Enumerate all service directories (services/<name>/) for dynamic dispatch.
 SERVICE_DIRS := $(sort $(wildcard services/*/))
+# Canonical layer tokens recognised by the dispatcher.
 LAYER_TOKENS := be backend fe frontend
+# Map short aliases to canonical backend layer name.
 LAYER_ALIAS_be := backend
 LAYER_ALIAS_backend := backend
+# Map short aliases to canonical frontend layer name.
 LAYER_ALIAS_fe := frontend
 LAYER_ALIAS_frontend := frontend
 
+# Expose the standard OpenAPI management targets.
 OPENAPI_TARGETS := install-redocly bundle-openapi clean
 .PHONY: $(OPENAPI_TARGETS:%=openapi-%)
 
+# Dispatch helper expands service-layer commands (alias-layer-target) to make invocations.
 define DISPATCH_SERVICE_TARGET
 $(eval __goal := $(1))
 $(eval __alias := $(firstword $(subst -, ,$(__goal))))
@@ -27,6 +33,7 @@ $(if $(strip $(__layer)),,$(error Unknown layer alias '$(__layer_alias)'))
 $(MAKE) -C services/$(__service)/$(__layer) $(__target)
 endef
 
+# Generate PHONY rules for any service-layer goal requested by the caller.
 define DEFINE_SERVICE_GOAL
 $(1):
 	$$(call DISPATCH_SERVICE_TARGET,$(1))
@@ -34,12 +41,14 @@ $(1):
 .PHONY: $(1)
 endef
 
+# Predicate to check whether a goal uses the <service>-<layer>-<target> pattern.
 IS_SERVICE_GOAL = $(strip $(foreach layer,$(LAYER_TOKENS),$(findstring -$(layer)-,$(1))))
 
-# manager-specific openapi commands remain available
+# manager-specific openapi commands remain available.
 openapi-%:
 	$(MAKE) -C services/manager/openapi $(@:openapi-%=%)
 
+# Dynamically define service-layer rules for each requested goal.
 ifneq ($(MAKECMDGOALS),)
 $(foreach goal,$(MAKECMDGOALS), \
   $(if $(call IS_SERVICE_GOAL,$(goal)), \
