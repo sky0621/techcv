@@ -1,19 +1,19 @@
-# Enumerate all service directories (services/<name>/) for dynamic dispatch.
+# 動的ディスパッチのためにサービスディレクトリ (services/<name>/) を列挙する。
 SERVICE_DIRS := $(sort $(wildcard services/*/))
-# Canonical layer tokens recognised by the dispatcher.
+# ディスパッチャが認識する正規レイヤートークン。
 LAYER_TOKENS := be backend fe frontend
-# Map short aliases to canonical backend layer name.
+# 短いエイリアスを正規のバックエンドレイヤー名に対応付ける。
 LAYER_ALIAS_be := backend
 LAYER_ALIAS_backend := backend
-# Map short aliases to canonical frontend layer name.
+# 短いエイリアスを正規のフロントエンドレイヤー名に対応付ける。
 LAYER_ALIAS_fe := frontend
 LAYER_ALIAS_frontend := frontend
 
-# Expose the standard OpenAPI management targets.
+# 標準的な OpenAPI 管理ターゲットを公開する。
 OPENAPI_TARGETS := install-redocly bundle-openapi clean
 .PHONY: $(OPENAPI_TARGETS:%=openapi-%)
 
-# Dispatch helper expands service-layer commands (alias-layer-target) to make invocations.
+# ディスパッチヘルパーはサービスレイヤーコマンド (alias-layer-target) を展開して make を呼び出す。
 define DISPATCH_SERVICE_TARGET
 $(eval __goal := $(1))
 $(eval __alias := $(firstword $(subst -, ,$(__goal))))
@@ -33,7 +33,7 @@ $(if $(strip $(__layer)),,$(error Unknown layer alias '$(__layer_alias)'))
 $(MAKE) -C services/$(__service)/$(__layer) $(__target)
 endef
 
-# Generate PHONY rules for any service-layer goal requested by the caller.
+# 呼び出し側が要求したサービスレイヤーのゴールに対する PHONY ルールを生成する。
 define DEFINE_SERVICE_GOAL
 $(1):
 	$$(call DISPATCH_SERVICE_TARGET,$(1))
@@ -41,14 +41,14 @@ $(1):
 .PHONY: $(1)
 endef
 
-# Predicate to check whether a goal uses the <service>-<layer>-<target> pattern.
+# ゴールが <service>-<layer>-<target> 形式かどうかを判定する述語。
 IS_SERVICE_GOAL = $(strip $(foreach layer,$(LAYER_TOKENS),$(findstring -$(layer)-,$(1))))
 
-# manager-specific openapi commands remain available.
+# manager 専用の openapi コマンドを引き続き利用可能にする。
 openapi-%:
 	$(MAKE) -C services/manager/openapi $(@:openapi-%=%)
 
-# Dynamically define service-layer rules for each requested goal.
+# 要求された各ゴールに対してサービスレイヤーのルールを動的に定義する。
 ifneq ($(MAKECMDGOALS),)
 $(foreach goal,$(MAKECMDGOALS), \
   $(if $(call IS_SERVICE_GOAL,$(goal)), \
