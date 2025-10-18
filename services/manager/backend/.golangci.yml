@@ -88,4 +88,3 @@ linters:
     paths:
       - vendor
       - bin
-      - cmd/utils
