@@ -1,0 +1,58 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "dependencyDashboard": true,
+  "dependencyDashboardAutoclose": true,
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "rebaseWhen": "behind-base-branch",
+  "timezone": "Asia/Tokyo",
+  "packageRules": [
+    {
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchPaths": [
+        "services/manager/backend/**"
+      ],
+      "groupName": "manager backend go dependencies",
+      "groupSlug": "manager-backend-go",
+      "separateMinorPatch": true
+    },
+    {
+      "matchManagers": [
+        "npm"
+      ],
+      "matchPaths": [
+        "services/manager/frontend/**"
+      ],
+      "groupName": "manager frontend dependencies",
+      "groupSlug": "manager-frontend-npm"
+    },
+    {
+      "matchManagers": [
+        "npm"
+      ],
+      "matchPaths": [
+        "services/manager/openapi/**"
+      ],
+      "groupName": "manager openapi tooling",
+      "groupSlug": "manager-openapi-npm"
+    },
+    {
+      "matchManagers": [
+        "npm"
+      ],
+      "matchPackagePatterns": [
+        "^@types/"
+      ],
+      "groupName": "@types packages",
+      "groupSlug": "npm-types"
+    }
+  ]
+}
