@@ -3,9 +3,6 @@ APP_PATH=./cmd/api
 COMPOSE ?= docker compose
 SQLC ?= sqlc
 
-GOLANGCI_LINT ?= golangci-lint
-GOIMPORTS ?= goimports
-
 .PHONY: help
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## ' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "%-16s %s\n", $$1, $$2}'
@@ -51,17 +48,14 @@ gen-api: ## Generate Go sources from OpenAPI specification
 fmt: ## Run gofmt on Go files
 	go fmt ./...
 
-.PHONY: goimports
-goimports: ## Run goimports on Go files
-	$(GOIMPORTS) -w $(shell find . -name '*.go' -not -path './vendor/*' -not -path './bin-tools/*' -not -path './.gomodcache/*')
-
 .PHONY: imports
-imports: goimports ## Backward compatibility alias
+imports: ## Run goimports on Go files
+	go tool golang.org/x/tools/cmd/goimports -w $(shell find . -name '*.go' -not -path './vendor/*' -not -path './bin-tools/*' -not -path './.gomodcache/*')
 
 # Quality gates
 .PHONY: lint
-lint: download ## Run golangci-lint
-	GOCACHE=$(CURDIR)/.cache GOLANGCI_LINT_CACHE=$(CURDIR)/.cache/golangci-lint $(GOLANGCI_LINT) run
+lint: ## Run golangci-lint
+	GOCACHE=$(CURDIR)/.cache GOLANGCI_LINT_CACHE=$(CURDIR)/.cache/golangci-lint go tool github.com/golangci/golangci-lint/cmd/golangci-lint run
 	rm -rf $(CURDIR)/.cache
 
 .PHONY: check
