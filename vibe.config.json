@@ -1,8 +1,0 @@
-{
-  "ide": {
-    "type": "custom",
-    "name": "GoLand",
-    "openCommand": "goland://open?file={path}",
-    "rootDir": "/Users/sky0621/work/github.com/sky0621/techcv"
-  }
-}

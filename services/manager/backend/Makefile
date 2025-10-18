@@ -10,6 +10,7 @@ GOIMPORTS ?= goimports
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## ' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "%-16s %s\n", $$1, $$2}'
 
+# Local development
 .PHONY: run
 run: ## Run the application in development mode
 	go run $(APP_PATH)
@@ -22,6 +23,7 @@ build: ## Build the application binary
 test: ## Run unit tests
 	go test ./...
 
+# Dependency management
 .PHONY: tidy
 tidy: ## Update go modules
 	go mod tidy
@@ -30,6 +32,7 @@ tidy: ## Update go modules
 download: ## Update go modules
 	go mod download
 
+# Database and code generation
 .PHONY: migrate
 migrate: ## Apply schema changes to the local database using sqldef
 	$(COMPOSE) run --rm sqldef
@@ -43,6 +46,7 @@ gen-api: ## Generate Go sources from OpenAPI specification
 	GOCACHE=$(CURDIR)/.cache go run ./cmd/openapi -spec ../openapi/openapi.yaml -out ./internal/interface/http/openapi/openapi.gen.go
 	rm -rf $(CURDIR)/.cache
 
+# Formatting
 .PHONY: fmt
 fmt: ## Run gofmt on Go files
 	go fmt ./...
@@ -54,6 +58,7 @@ goimports: ## Run goimports on Go files
 .PHONY: imports
 imports: goimports ## Backward compatibility alias
 
+# Quality gates
 .PHONY: lint
 lint: download ## Run golangci-lint
 	GOCACHE=$(CURDIR)/.cache GOLANGCI_LINT_CACHE=$(CURDIR)/.cache/golangci-lint $(GOLANGCI_LINT) run
