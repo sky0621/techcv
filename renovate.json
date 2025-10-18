@@ -12,6 +12,7 @@
   "prHourlyLimit": 2,
   "rebaseWhen": "behind-base-branch",
   "timezone": "Asia/Tokyo",
+  "minimumReleaseAge": "7 days",
   "packageRules": [
     {
       "matchManagers": [
