@@ -1,3 +1,34 @@
+CREATE TABLE users (
+  id BINARY(16) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  password_hash VARCHAR(255) DEFAULT NULL,
+  google_id VARCHAR(255) DEFAULT NULL,
+  name VARCHAR(100) DEFAULT NULL,
+  profile_image_url VARCHAR(512) DEFAULT NULL,
+  bio TEXT,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  email_verified_at DATETIME(6) DEFAULT NULL,
+  last_login_at DATETIME(6) DEFAULT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_users_email (email),
+  UNIQUE KEY uq_users_google_id (google_id),
+  KEY idx_users_last_login_at (last_login_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE oauth_states (
+  state VARCHAR(255) NOT NULL,
+  code_verifier VARCHAR(255) DEFAULT NULL,
+  nonce VARCHAR(255) DEFAULT NULL,
+  redirect_uri VARCHAR(2048) DEFAULT NULL,
+  expires_at DATETIME(6) NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (state),
+  KEY idx_oauth_states_expires_at (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE public_urls (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   url_key VARCHAR(64) NOT NULL,
