@@ -1,24 +1,25 @@
-# Repository Guidelines
+# リポジトリ運用ガイドライン
 
-## Project Structure & Module Organization
-The backend lives in `services`, a standalone Go module with the HTTP entrypoint under `services/cmd/api`. Layered packages are in `services/internal` (`domain`, `infrastructure`, `interface`, `usecase`)—keep new business logic in the relevant layer to preserve separation of concerns. Shared documentation belongs in `docs`, while deployment manifests and scripts belong in `infra`.
+## プロジェクト構成とモジュール配置
+バックエンドは `services` 配下にある独立した Go モジュールで、HTTP エントリポイントは `services/cmd/api` に置かれています。レイヤードパッケージは `services/internal`（`domain`、`infrastructure`、`interface`、`usecase`）にまとまっているので、責務の分離を維持するため新しいビジネスロジックは適切なレイヤーへ追加してください。共有ドキュメントは `docs`、デプロイ用マニフェストやスクリプトは `infra` に配置します。
+作業を始める前に、運用方針を理解するため `.kiro/steering` 配下のドキュメントを必ず読み込んでください。
 
-## Build, Test, and Development Commands
-Run tooling from the `services` directory:
-- `make run`: starts the Echo API locally via `go run ./cmd/api`, respecting the `PORT` environment variable.
-- `make build`: compiles `bin/api`, the production binary built from `cmd/api`.
-- `make test`: executes `go test ./...` across every package.
-- `make lint`: runs `gofmt` on all Go sources.
-- `make tidy`: refreshes module dependencies and prunes unused ones.
+## ビルド・テスト・開発コマンド
+ツール類は `services` ディレクトリで実行します。
+- `make run`: `go run ./cmd/api` を通じて Echo API をローカル起動し、`PORT` 環境変数を尊重します。
+- `make build`: `cmd/api` を基に本番用バイナリ `bin/api` をビルドします。
+- `make test`: 全パッケージに対して `go test ./...` を実行します。
+- `make lint`: すべての Go ソースに `gofmt` を適用します。
+- `make tidy`: 依存関係を更新し、未使用のものを整理します。
 
-## Coding Style & Naming Conventions
-Follow idiomatic Go style—use tabs, keep line length reasonable, and rely on `gofmt` for layout. Package names should be short and lower-case (`handler`, `logger`); exported structs and interfaces use PascalCase, private helpers use camelCase. Prefer constructor functions like `NewHealthHandler` for dependency injection and keep HTTP handlers in `internal/interface/http` alongside their middleware.
+## コーディングスタイルと命名規則
+Go の慣用スタイルに従い、タブを使用しつつ適切な行長を保ち、整形には `gofmt` を利用します。パッケージ名は短い小文字（例: `handler`, `logger`）とし、エクスポートする構造体やインターフェースはパスカルケース、非公開のヘルパーはキャメルケースを使います。依存性注入には `NewHealthHandler` のようなコンストラクタ関数を優先し、HTTP ハンドラとミドルウェアは `internal/interface/http` にまとめます。
 
-## Testing Guidelines
-Add `_test.go` files alongside the code they exercise and use the standard `testing` package. Group table-driven cases when inputs vary, and stub external dependencies via interfaces defined in `internal`. Aim for meaningful coverage on new code paths and ensure `make test` passes cleanly before pushing.
+## テスト指針
+対象コードと同じ場所に `_test.go` ファイルを追加し、標準の `testing` パッケージを使用します。入力が変わるケースはテーブル駆動でまとめ、外部依存は `internal` で定義したインターフェースを介してスタブ化します。新しいコードパスに対して有意義なカバレッジを確保し、プッシュ前に `make test` が問題なく通ることを確認してください。
 
-## Commit & Pull Request Guidelines
-Write commits in the imperative mood with concise subjects (`Add health handler timeout logging`). The current history favors descriptive messages that enumerate impacted paths; mirror that clarity and note structural moves when applicable. Pull requests must explain the user-facing change, list testing evidence (`make test` output is sufficient), and link tracking issues. Add screenshots or curl transcripts when you alter HTTP responses.
+## コミットとプルリクエストの指針
+コミットメッセージは簡潔な命令形（例: `Add health handler timeout logging`）で記述します。これまでの履歴は影響範囲を列挙する説明的なメッセージを好むため、その明快さを踏襲し、構造的な変更があれば言及してください。プルリクエストではユーザー影響のある変更内容を説明し、テスト実行結果（`make test` の出力で十分）と関連チケットを記載します。HTTP レスポンスを変更した場合はスクリーンショットや curl の結果を添付してください。
 
-## Environment & Configuration
-The API reads configuration from environment variables; currently only `PORT` is required, defaulting to `8080`. Centralized logging uses Zap (`internal/infrastructure/logger`), so prefer structured fields (`zap.String`, etc.) over string concatenation. Update the README whenever configuration inputs change so deployment manifests in `infra` stay aligned.
+## 環境設定
+API は環境変数から設定を読み込みます。現在必須なのは `PORT` のみで、デフォルトは `8080` です。集中ログには Zap（`internal/infrastructure/logger`）を使用するため、文字列連結ではなく `zap.String` などの構造化フィールドを優先してください。設定項目を変更した場合は README を更新し、`infra` 内のデプロイマニフェストとの整合性を保ちます。
