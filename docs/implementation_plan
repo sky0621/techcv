@@ -1,0 +1,94 @@
+# Google Social Login Implementation Plan
+
+## Objective
+- Enable guests to register and sign in to the manager service via Google OAuth 2.0 in line with `.kiro/specs/manager/requirements/user_story/ゲストはソーシャルログイン（Google）によってユーザー登録できる.md`.
+- Follow the architectural and layering guidance in `.kiro/specs/manager/design/google-social-login.md` while fitting the existing clean architecture layout under `services/manager/backend/internal`.
+
+## Scope
+- Backend (Go): database schema, domain/use case layers, infrastructure adapters, HTTP handlers, configuration, logging.
+- Frontend (React): UX on login/registration/callback flows, API client integration, state handling, error UX.
+- OpenAPI contract, generated server/client code, developer documentation (`README`, `.env.example`, infra manifests).
+
+## Assumptions & Dependencies
+- Google Cloud credentials (client ID/secret, allowed redirect URIs) are provisioned and injected via environment variables.
+- OAuth state storage can start with an in-memory/Redis implementation behind an interface; production will use a shared store (Redis).
+- API issues HTTP-only Secure cookies for session continuity; frontend already includes credentials with requests via `ky`.
+- Existing email/password registration remains intact; Google login augments it without breaking current flows.
+
+## Workstreams
+
+### 1. Data & Configuration Foundation
+- Extend schema under `services/manager/backend/db/schema.sql` with the `users` table (uuid v7 primary key, nullable `password_hash`, unique `google_id`, profile metadata) plus indices noted in the design doc.
+- Add SQLc queries in `services/manager/backend/db/queries` for create/select/update operations around Google IDs and last login timestamps; regenerate code with `make tidy`/`sqlc`.
+- Introduce OAuth state persistence (either new `oauth_states` table or Redis). Provide sqldef migration and SQLc bindings if MySQL-based; otherwise, wire Redis connection settings in `docker-compose.yml`.
+- Define env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `SESSION_SECRET`, `COOKIE_DOMAIN`, `COOKIE_SECURE` flag, Redis connection params. Document defaults in backend README and `.env.example`.
+- Update `services/manager/backend/cmd/api/main.go` (or a new config package) to load the new settings with validation (fail fast if missing in non-test mode).
+
+### 2. Domain & Use Case Layer Updates
+- Add `GoogleID` value object and any supporting validation (`services/manager/backend/internal/domain/user/google_id.go`).
+- Refactor `User` aggregate (`.../domain/user/user.go`) to support optional password hash, optional Google ID/profile image, and helper constructors (`NewUserWithGoogle`, `LinkGoogleAccount`, `WithLastLogin` returning aggregate + error). Update getters and ensure timestamps remain microsecond precision UTC.
+- Extend repository contracts (`.../domain/user/repository.go`) with methods such as `FindByGoogleID`, `Save`/`UpdateGoogleID`, `UpdateLastLogin`.
+- Create DTOs and interactors in `services/manager/backend/internal/usecase/auth` (or a dedicated `usecase/user/command` namespace) for:
+  - `StartGoogleLogin` (generates state, returns redirect URL),
+  - `CompleteGoogleCallback` (state validation, token exchange, user lookup/creation, JWT issuance, session cookie output),
+  - shared request/response structs aligned to acceptance criteria.
+- Update use case tests to cover new flows: state mismatch, existing user login, new user registration, token verification failures. Use mocked repositories/interfaces defined in `interfaces.go`.
+
+### 3. Infrastructure & Adapter Layer
+- Implement MySQL-backed user repository in `services/manager/backend/internal/infrastructure/mysql` using generated SQLc code; ensure error translation to domain errors (duplicate email/google id, record not found).
+- Provide transaction-aware manager (wrap `*sql.DB` / `*sql.Tx`) in `internal/infrastructure/transaction`.
+- Add OAuth client package (`internal/infrastructure/oauth/google_client.go`) encapsulating `golang.org/x/oauth2` config, token exchange, and ID token validation (including JWKS caching).
+- Build JWT/session service (`internal/infrastructure/auth/jwt_service.go`) that signs tokens with `SESSION_SECRET`, and helper to write secure cookies from handlers.
+- Introduce `SessionRepository` abstraction (interface in adapter or use case layer) with in-memory dev implementation and Redis-backed production one (`internal/infrastructure/session/redis_repository.go`).
+- Enhance logging using existing logger to trace OAuth milestones (state creation, token exchange results, errors).
+
+### 4. HTTP Interface & OpenAPI
+- Update OpenAPI specs under `services/manager/openapi/spec`:
+  - Add `GET /auth/google/login` (redirect URL response payload or direct 302), `GET /auth/google/callback` (returns 204 with cookie or JSON structure for SPA), and supporting schemas/error codes.
+  - Extend `components/schemas` for Google auth responses and error payloads.
+- Regenerate server stubs with `make generate-openapi` (or project equivalent). Commit resulting changes in `internal/interface/http/openapi/openapi.gen.go`.
+- Expand HTTP handler layer (`internal/interface/http/handler/api_handler.go` and/or new file) to implement start/callback endpoints, map app errors to standard error responses, and set cookies/redirects as per spec (e.g., redirect to `/auth/callback?code=...` for SPA flow).
+- Wire new routes in Echo group under `/techcv/api/v1/auth/google/*`; ensure middleware (timeout, logging) already applied.
+- Propagate request ID to logs/meta and enforce 30s timeout compliance.
+
+### 5. Application Wiring & Bootstrap
+- Update `cmd/api/main.go` to instantiate real repositories (`mysql.NewUserRepository`) instead of in-memory ones, configure Redis session store, OAuth client, JWT service, and inject into new use cases/handlers.
+- Ensure dependency graph respects layer boundaries (interfaces defined inner, implementations injected outer).
+- Provide graceful shutdown for Redis/MySQL clients and rotate secrets via env.
+- Adjust `services/manager/backend/Makefile` to include commands for running Redis (if needed) and to regenerate SQLc/OpenAPI artifacts.
+
+### 6. Frontend Changes
+- Surface Google login CTA on both login and register pages (`services/manager/frontend/src/features/auth/pages/*`). Apply Google branding (add icon asset, button styling) and disable while redirect pending.
+- Update `AuthCallbackPage` logic to:
+  - capture `error` and `state` query params,
+  - call new callback endpoint, handle HTTP-only cookie (no token in response), and fetch `/api/v1/auth/me` to populate session,
+  - present user-friendly error states (cancelled auth, invalid state, generic failure).
+- Provide hook/util (`features/auth/hooks/use-google-login.ts`) if needed to centralize redirect logic (including `redirectTo` support).
+- Extend router to handle cancellation route or query message if spec requires.
+- Add responsive tests (`vitest` + React Testing Library) covering button presence, disabled states, callback error rendering.
+- Document required frontend env vars (`VITE_API_BASE_URL`, `VITE_GOOGLE_CLIENT_ID`) and ensure `services/manager/frontend/.env.example` is updated.
+
+### 7. Documentation & Developer Experience
+- Update backend README with setup steps for Google OAuth credentials, Redis (if introduced), and how to run local OAuth loop (using localhost redirect).
+- Document the new endpoints and expected responses in `docs/dependency-management.md` or dedicated auth doc if appropriate.
+- Provide troubleshooting section (state mismatch, credential misconfiguration) within docs or runbook.
+- Sync infra manifests (`infra/` directories) to export new env vars/secrets for deployment pipelines.
+
+## Testing Strategy
+- Unit tests: value objects (`GoogleID`), user aggregate constructors, new use cases (happy/error paths) with mocks.
+- Integration tests: MySQL repository using `sqlmock`/test DB, OAuth session store (Redis) using containerized test environment, HTTP handlers via Echo test server.
+- Contract tests: validate OpenAPI definitions via redocly/`make lint`.
+- Frontend tests: component/page tests for login/register/callback pages, Jotai session updates.
+- End-to-end smoke (manual or automated) to cover full OAuth redirect using Google test credentials (can mock via `httptest` + fake OAuth server for CI).
+
+## Rollout & Operations
+- Update `docker-compose.yml` to include Redis (if required) and document startup flow (`make run`).
+- Confirm `PORT` and redirect URIs align (frontend uses `http://localhost:5173/auth/callback` while backend callback sits at `/techcv/api/v1/auth/google/callback`).
+- Ensure logging/monitoring capture OAuth error metrics; add counters if we already use Prometheus.
+- Plan feature flag or phased rollout (optional) by enabling Google login button only after backend ready.
+
+## Open Questions / Follow-ups
+- Confirm whether callback response should redirect to frontend or return JSON (SPA currently expects JSON). Agree on final contract before coding.
+- Decide on long-term storage for OAuth state (Redis vs MySQL table) and whether to reuse existing session management infrastructure.
+- Clarify cookie attributes (domain, SameSite=None?, Secure=true in production) with ops team.
+- Determine if additional audit logging is required for login attempts.
