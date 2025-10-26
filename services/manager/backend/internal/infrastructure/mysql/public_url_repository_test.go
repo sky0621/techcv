@@ -49,8 +49,8 @@ func TestPublicURLRepositoryGetActive(t *testing.T) {
 		if closeErr := db.Close(); closeErr != nil {
 			t.Fatalf("failed to close db: %v", closeErr)
 		}
-		if err := mock.ExpectationsWereMet(); err != nil {
-			t.Fatalf("unmet expectations: %v", err)
+		if expectationsErr := mock.ExpectationsWereMet(); expectationsErr != nil {
+			t.Fatalf("unmet expectations: %v", expectationsErr)
 		}
 	}()
 
@@ -71,7 +71,6 @@ func TestPublicURLRepositoryGetActive(t *testing.T) {
 	if result == nil || result.URLKey != "active-key" {
 		t.Fatalf("unexpected result: %+v", result)
 	}
-
 }
 
 func TestPublicURLRepositoryCreate(t *testing.T) {
@@ -83,8 +82,8 @@ func TestPublicURLRepositoryCreate(t *testing.T) {
 		if closeErr := db.Close(); closeErr != nil {
 			t.Fatalf("failed to close db: %v", closeErr)
 		}
-		if err := mock.ExpectationsWereMet(); err != nil {
-			t.Fatalf("unmet expectations: %v", err)
+		if expectationsErr := mock.ExpectationsWereMet(); expectationsErr != nil {
+			t.Fatalf("unmet expectations: %v", expectationsErr)
 		}
 	}()
 
@@ -102,7 +101,6 @@ func TestPublicURLRepositoryCreate(t *testing.T) {
 	if id != 10 {
 		t.Fatalf("unexpected id: got %d, want %d", id, 10)
 	}
-
 }
 
 func TestPublicURLRepositoryList(t *testing.T) {
@@ -114,8 +112,8 @@ func TestPublicURLRepositoryList(t *testing.T) {
 		if closeErr := db.Close(); closeErr != nil {
 			t.Fatalf("failed to close db: %v", closeErr)
 		}
-		if err := mock.ExpectationsWereMet(); err != nil {
-			t.Fatalf("unmet expectations: %v", err)
+		if expectationsErr := mock.ExpectationsWereMet(); expectationsErr != nil {
+			t.Fatalf("unmet expectations: %v", expectationsErr)
 		}
 	}()
 
@@ -141,7 +139,6 @@ func TestPublicURLRepositoryList(t *testing.T) {
 	if results[0].URLKey != "first" || !results[0].IsActive {
 		t.Fatalf("unexpected first result: %+v", results[0])
 	}
-
 }
 
 func TestPublicURLRepositoryDeactivate(t *testing.T) {
@@ -153,8 +150,8 @@ func TestPublicURLRepositoryDeactivate(t *testing.T) {
 		if closeErr := db.Close(); closeErr != nil {
 			t.Fatalf("failed to close db: %v", closeErr)
 		}
-		if err := mock.ExpectationsWereMet(); err != nil {
-			t.Fatalf("unmet expectations: %v", err)
+		if expectationsErr := mock.ExpectationsWereMet(); expectationsErr != nil {
+			t.Fatalf("unmet expectations: %v", expectationsErr)
 		}
 	}()
 
@@ -167,5 +164,4 @@ func TestPublicURLRepositoryDeactivate(t *testing.T) {
 	if err := repo.Deactivate(context.Background(), 5); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
 }

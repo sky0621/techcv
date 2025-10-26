@@ -21,8 +21,8 @@ func TestHealthRepositoryPing(t *testing.T) {
 		if closeErr := db.Close(); closeErr != nil {
 			t.Fatalf("failed to close db: %v", closeErr)
 		}
-		if err := mock.ExpectationsWereMet(); err != nil {
-			t.Fatalf("unmet expectations: %v", err)
+		if expectationsErr := mock.ExpectationsWereMet(); expectationsErr != nil {
+			t.Fatalf("unmet expectations: %v", expectationsErr)
 		}
 	}()
 
@@ -30,5 +30,4 @@ func TestHealthRepositoryPing(t *testing.T) {
 	if err := repo.Ping(context.Background()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
 }
