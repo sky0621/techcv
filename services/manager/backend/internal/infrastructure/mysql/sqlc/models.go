@@ -5,8 +5,19 @@
 package mysqlsqlc
 
 import (
+	"database/sql"
 	"time"
 )
+
+type OauthState struct {
+	State        string         `json:"state"`
+	CodeVerifier sql.NullString `json:"code_verifier"`
+	Nonce        sql.NullString `json:"nonce"`
+	RedirectUri  sql.NullString `json:"redirect_uri"`
+	ExpiresAt    time.Time      `json:"expires_at"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+}
 
 type PublicUrl struct {
 	ID        int64     `json:"id"`
@@ -14,4 +25,19 @@ type PublicUrl struct {
 	IsActive  bool      `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type User struct {
+	ID              []byte         `json:"id"`
+	Email           string         `json:"email"`
+	PasswordHash    sql.NullString `json:"password_hash"`
+	GoogleID        sql.NullString `json:"google_id"`
+	Name            sql.NullString `json:"name"`
+	ProfileImageUrl sql.NullString `json:"profile_image_url"`
+	Bio             sql.NullString `json:"bio"`
+	IsActive        bool           `json:"is_active"`
+	EmailVerifiedAt sql.NullTime   `json:"email_verified_at"`
+	LastLoginAt     sql.NullTime   `json:"last_login_at"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }

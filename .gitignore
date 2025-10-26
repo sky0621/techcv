@@ -2,5 +2,6 @@
 bin
 bin-tools/
 node_modules
+.DS_Store
 **/.gomodcache
 **/.cache/
