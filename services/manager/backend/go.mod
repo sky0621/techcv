@@ -5,6 +5,7 @@ go 1.25
 tool (
 	github.com/golangci/golangci-lint/cmd/golangci-lint
 	golang.org/x/tools/cmd/goimports
+	github.com/sqldef/sqldef/cmd/mysqldef
 )
 
 require (

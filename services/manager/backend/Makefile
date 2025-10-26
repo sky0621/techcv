@@ -1,7 +1,19 @@
 APP_NAME=api
 APP_PATH=./cmd/api
 COMPOSE ?= docker compose
+COMPOSE_FILE ?= $(CURDIR)/docker-compose.yml
 SQLC ?= sqlc
+
+SQLDEF_BIN ?= $(CURDIR)/bin-tools/mysqldef
+SQLDEF_PKG := github.com/sqldef/sqldef/cmd/mysqldef
+
+DB_HOST ?= 127.0.0.1
+DB_PORT ?= 3306
+DB_NAME ?= manager
+DB_USER ?= manager
+DB_PASSWORD ?= manager
+DB_ROOT_PASSWORD ?= root
+SCHEMA_FILE ?= db/schema.sql
 
 .PHONY: help
 help:
@@ -30,9 +42,32 @@ download: ## Update go modules
 	go mod download
 
 # Database and code generation
+.PHONY: db-up
+db-up: ## Start the local MySQL container
+	DB_NAME=$(DB_NAME) \
+	DB_USER=$(DB_USER) \
+	DB_PASSWORD=$(DB_PASSWORD) \
+	DB_ROOT_PASSWORD=$(DB_ROOT_PASSWORD) \
+	DB_PORT=$(DB_PORT) \
+	$(COMPOSE) -f $(COMPOSE_FILE) up -d db
+
+.PHONY: db-down
+db-down: ## Stop the local MySQL container
+	DB_NAME=$(DB_NAME) \
+	DB_USER=$(DB_USER) \
+	DB_PASSWORD=$(DB_PASSWORD) \
+	DB_ROOT_PASSWORD=$(DB_ROOT_PASSWORD) \
+	DB_PORT=$(DB_PORT) \
+	$(COMPOSE) -f $(COMPOSE_FILE) stop db
+
 .PHONY: migrate
-migrate: ## Apply schema changes to the local database using sqldef
-	$(COMPOSE) run --rm sqldef
+migrate: $(SQLDEF_BIN) ## Apply schema changes to the local database using mysqldef
+	MYSQL_PWD=$(DB_PASSWORD) $(SQLDEF_BIN) \
+		-h $(DB_HOST) \
+		-P $(DB_PORT) \
+		-u $(DB_USER) \
+		--file $(SCHEMA_FILE) \
+		$(DB_NAME)
 
 .PHONY: gen-sqlc
 gen-sqlc: ## Generate database access layer code with sqlc
@@ -67,3 +102,9 @@ check:
 	make lint
 	make build
 	make test
+
+$(SQLDEF_BIN):
+	@mkdir -p $(dir $(SQLDEF_BIN))
+	@version=$$(cd $(CURDIR) && go list -f '{{.Version}}' -m $(SQLDEF_PKG) 2>/dev/null || echo latest); \
+	echo "Installing mysqldef ($$version)"; \
+	GO111MODULE=on GOBIN=$(CURDIR)/bin-tools go install $(SQLDEF_PKG)@$$version
