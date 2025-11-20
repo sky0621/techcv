@@ -1,25 +1,17 @@
 # リポジトリ運用ガイドライン
 
-## プロジェクト構成とモジュール配置
-バックエンドは `services` 配下にある独立した Go モジュールで、HTTP エントリポイントは `services/cmd/api` に置かれています。レイヤードパッケージは `services/internal`（`domain`、`infrastructure`、`interface`、`usecase`）にまとまっているので、責務の分離を維持するため新しいビジネスロジックは適切なレイヤーへ追加してください。共有ドキュメントは `docs`、デプロイ用マニフェストやスクリプトは `infra` に配置します。
-作業を始める前に、運用方針を理解するため `.kiro/steering` 配下のドキュメントを必ず読み込んでください。
+リポジトリのルールや開発手順は `.kiro/steering` 配下の各ドキュメントで管理しています。作業を始める前に必ずそれらを読み、最新の方針に従ってください。迷った場合も `.kiro/steering` を参照すれば必要な情報が見つかります。
 
-## ビルド・テスト・開発コマンド
-ツール類は `services` ディレクトリで実行します。
-- `make run`: `go run ./cmd/api` を通じて Echo API をローカル起動し、`PORT` 環境変数を尊重します。
-- `make build`: `cmd/api` を基に本番用バイナリ `bin/api` をビルドします。
-- `make test`: 全パッケージに対して `go test ./...` を実行します。
-- `make lint`: すべての Go ソースに `gofmt` を適用します。
-- `make tidy`: 依存関係を更新し、未使用のものを整理します。
+## 参照先ドキュメント
 
-## コーディングスタイルと命名規則
-Go の慣用スタイルに従い、タブを使用しつつ適切な行長を保ち、整形には `gofmt` を利用します。パッケージ名は短い小文字（例: `handler`, `logger`）とし、エクスポートする構造体やインターフェースはパスカルケース、非公開のヘルパーはキャメルケースを使います。依存性注入には `NewHealthHandler` のようなコンストラクタ関数を優先し、HTTP ハンドラとミドルウェアは `internal/interface/http` にまとめます。
-
-## テスト指針
-対象コードと同じ場所に `_test.go` ファイルを追加し、標準の `testing` パッケージを使用します。入力が変わるケースはテーブル駆動でまとめ、外部依存は `internal` で定義したインターフェースを介してスタブ化します。新しいコードパスに対して有意義なカバレッジを確保し、プッシュ前に `make test` が問題なく通ることを確認してください。
-
-## コミットとプルリクエストの指針
-コミットメッセージは簡潔な命令形（例: `Add health handler timeout logging`）で記述します。これまでの履歴は影響範囲を列挙する説明的なメッセージを好むため、その明快さを踏襲し、構造的な変更があれば言及してください。プルリクエストではユーザー影響のある変更内容を説明し、テスト実行結果（`make test` の出力で十分）と関連チケットを記載します。HTTP レスポンスを変更した場合はスクリーンショットや curl の結果を添付してください。
-
-## 環境設定
-API は環境変数から設定を読み込みます。現在必須なのは `PORT` のみで、デフォルトは `8080` です。集中ログには Zap（`internal/infrastructure/logger`）を使用するため、文字列連結ではなく `zap.String` などの構造化フィールドを優先してください。設定項目を変更した場合は README を更新し、`infra` 内のデプロイマニフェストとの整合性を保ちます。
+- `.kiro/steering/architecture-backend.md`
+- `.kiro/steering/architecture-frontend.md`
+- `.kiro/steering/coding-standards-backend.md`
+- `.kiro/steering/coding-standards-database.md`
+- `.kiro/steering/coding-standards-frontend.md`
+- `.kiro/steering/coding-standards-sqlc.md`
+- `.kiro/steering/guidelines-backend.md`
+- `.kiro/steering/guidelines-frontend.md`
+- `.kiro/steering/howto-coding-backend.md`
+- `.kiro/steering/services.md`
+- `.kiro/steering/ubiquitous_language.md`
