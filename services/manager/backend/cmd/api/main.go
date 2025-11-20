@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,6 +13,7 @@ import (
 
 	authinfra "github.com/sky0621/techcv/manager/backend/internal/infrastructure/auth"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/clock"
+	appconfig "github.com/sky0621/techcv/manager/backend/internal/infrastructure/config"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/email"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/logger"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/mysql"
@@ -24,24 +26,27 @@ import (
 	"github.com/sky0621/techcv/manager/backend/internal/usecase/health"
 )
 
-const (
-	requestTimeout         = 30 * time.Second
-	defaultVerificationTTL = 24 * time.Hour
-)
+const requestTimeout = 30 * time.Second
 
 func main() {
+	cfg, err := appconfig.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load configuration: %v\n", err)
+		os.Exit(1)
+	}
+
 	log := logger.New()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	dbCfg := mysql.Config{
-		Host:     getEnv("DB_HOST", "127.0.0.1"),
-		Port:     getEnv("DB_PORT", "3306"),
-		Name:     getEnv("DB_NAME", "manager"),
-		User:     getEnv("DB_USER", "manager"),
-		Password: getEnv("DB_PASSWORD", "manager"),
-		Params:   getEnv("DB_PARAMS", "parseTime=true&loc=UTC&charset=utf8mb4"),
+		Host:     cfg.Database.Host,
+		Port:     cfg.Database.Port,
+		Name:     cfg.Database.Name,
+		User:     cfg.Database.User,
+		Password: cfg.Database.Password,
+		Params:   cfg.Database.Params,
 	}
 
 	db, err := mysql.NewConnection(ctx, dbCfg)
@@ -77,8 +82,8 @@ func main() {
 	tokenIssuer := authinfra.NewUUIDTokenIssuer()
 
 	registerConfig := auth.RegisterConfig{
-		VerificationURLBase: getEnv("VERIFICATION_URL_BASE", "http://localhost:5173/auth/verify"),
-		VerificationTTL:     defaultVerificationTTL,
+		VerificationURLBase: cfg.Auth.VerificationURLBase,
+		VerificationTTL:     cfg.Auth.VerificationTTL,
 	}
 
 	registerUsecase := auth.NewRegisterUsecase(userRepo, verificationRepo, mailer, clockProvider, registerConfig)
@@ -90,18 +95,11 @@ func main() {
 
 	srv := server.New(e, log)
 
-	addr := ":" + getEnv("PORT", "8080")
-	log.Info("starting server", "address", addr)
+	addr := ":" + cfg.Server.Port
+	log.Info("starting server", "address", addr, "env", cfg.App.Environment)
 
 	if err := srv.Start(ctx, addr); err != nil {
 		log.Error("server failed", "error", err)
 		os.Exit(1)
 	}
-}
-
-func getEnv(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return fallback
 }
