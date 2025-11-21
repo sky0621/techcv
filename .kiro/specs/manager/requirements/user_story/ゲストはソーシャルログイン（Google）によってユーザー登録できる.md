@@ -8,7 +8,7 @@
 
 ## 概要
 
-ゲストがmanagerサービスを利用するために、Googleアカウントを使用してユーザー登録を行う機能を提供します。OAuth 2.0プロトコルを使用してGoogleで認証を行い、登録が完了すると、ユーザーとしてシステムにログインし、CV管理機能にアクセスできるようになります。
+ゲストがmanagerサービスを利用するために、Googleアカウントを使用してユーザー登録を行う機能を提供します。Firebase Authenticationを使用してGoogleで認証を行い、登録が完了すると、ユーザーとしてシステムにログインし、CV管理機能にアクセスできるようになります。
 
 ## 受け入れ基準（Acceptance Criteria）
 
@@ -23,15 +23,13 @@
 ### 2. Google認証フローの開始
 
 **WHEN** ゲストが「Googleでログイン」ボタンをクリックする  
-**THEN** システムは以下の処理を実行する
-- OAuth 2.0認証フローを開始する
-- stateパラメータを生成してセッションに保存する（CSRF対策）
-- Googleの認証ページにリダイレクトする
-- 必要なスコープ（email、profile）をリクエストする
+**THEN** フロントエンドは以下の処理を実行する
+- Firebase AuthのGoogle認証プロバイダーを使用して認証フローを開始する
+- Googleの認証ページをポップアップまたはリダイレクトで表示する
 
 ### 3. Google認証ページの表示
 
-**WHEN** ゲストがGoogleの認証ページにリダイレクトされる  
+**WHEN** ゲストがGoogleの認証ページにアクセスする  
 **THEN** Googleは以下の情報を表示する
 - アプリケーション名
 - 要求される権限（メールアドレス、基本プロフィール情報）
@@ -40,52 +38,51 @@
 ### 4. 認証の許可
 
 **WHEN** ゲストがGoogleの認証ページで「許可」をクリックする  
-**THEN** GoogleはシステムのコールバックURLにリダイレクトする
-- 認証コード（authorization code）をクエリパラメータとして含める
-- stateパラメータを返す
+**THEN** Firebase Authは以下の処理を実行する
+- Googleから認証情報を取得する
+- Firebase IDトークンを生成する
+- フロントエンドに認証結果を返す
 
 ### 5. 認証の拒否
 
 **WHEN** ゲストがGoogleの認証ページで「拒否」をクリックする  
-**THEN** GoogleはシステムのコールバックURLにリダイレクトする
-- エラー情報をクエリパラメータとして含める
+**THEN** Firebase Authはエラーを返す
 
-**WHEN** システムがエラー情報を受け取る  
+**WHEN** フロントエンドがエラーを受け取る  
 **THEN** システムは「Google認証がキャンセルされました」というメッセージを表示する
 
-### 6. stateパラメータの検証
+### 6. Firebase IDトークンの取得
 
-**WHEN** システムがGoogleからのコールバックを受け取る  
-**THEN** システムは返されたstateパラメータがセッションに保存されたものと一致することを検証する
+**WHEN** Firebase Authから認証成功の結果を受け取る  
+**THEN** フロントエンドは以下の処理を実行する
+- Firebase UserオブジェクトからIDトークンを取得する
+- ユーザー情報（uid、email、displayName、photoURL）を取得する
 
-**IF** stateパラメータが一致しない  
+**IF** IDトークンの取得に失敗する  
 **THEN** システムは「認証に失敗しました。再度お試しください」というエラーメッセージを表示する
 
-### 7. アクセストークンの取得
+### 7. バックエンドへのIDトークン送信
 
-**WHEN** システムが認証コードを受け取る  
-**AND** stateパラメータの検証が成功する  
-**THEN** システムは以下の処理を実行する
-- 認証コードを使用してGoogleのトークンエンドポイントにリクエストを送信する
-- アクセストークンとIDトークンを取得する
+**WHEN** フロントエンドがFirebase IDトークンを取得する  
+**THEN** フロントエンドは以下の処理を実行する
+- バックエンドのユーザー登録/ログインAPIにIDトークンを送信する
+- Firebase UID、メールアドレス、名前、プロフィール画像URLを含める
 
-**IF** トークンの取得に失敗する  
-**THEN** システムは「認証に失敗しました。再度お試しください」というエラーメッセージを表示する
+### 8. Firebase IDトークンの検証
 
-### 8. ユーザー情報の取得
-
-**WHEN** システムがアクセストークンを取得する  
-**THEN** システムは以下の処理を実行する
-- IDトークンを検証する（署名、有効期限、issuer、audience）
-- IDトークンからユーザー情報を抽出する（sub、email、name、picture）
+**WHEN** バックエンドがIDトークンを受け取る  
+**THEN** バックエンドは以下の処理を実行する
+- Firebase Admin SDKを使用してIDトークンを検証する
+- トークンの署名、有効期限、issuer、audienceを確認する
+- トークンからFirebase UID、メールアドレス等を抽出する
 
 **IF** IDトークンの検証に失敗する  
 **THEN** システムは「認証に失敗しました。再度お試しください」というエラーメッセージを表示する
 
 ### 9. 既存ユーザーの確認
 
-**WHEN** システムがGoogleからユーザー情報を取得する  
-**THEN** システムはGoogleのユーザーID（sub）を使用して既存ユーザーを検索する
+**WHEN** バックエンドがFirebase UIDを取得する  
+**THEN** バックエンドはFirebase UIDを使用して既存ユーザーを検索する
 
 **IF** 既存ユーザーが見つかる  
 **THEN** システムはログイン処理を実行する（新規登録ではなく）
@@ -93,56 +90,60 @@
 ### 10. 新規ユーザー登録の実行
 
 **WHEN** 既存ユーザーが見つからない  
-**THEN** システムは以下の処理を実行する
+**THEN** バックエンドは以下の処理を実行する
 - UUID v7形式でユーザーIDを生成する
-- Googleから取得した情報を使用して新しいユーザーレコードを作成する
-  - email: Googleから取得したメールアドレス
-  - name: Googleから取得した名前
-  - google_id: GoogleのユーザーID（sub）
-  - profile_image: Googleから取得したプロフィール画像URL（オプション）
+- Firebaseから取得した情報を使用して新しいユーザーレコードを作成する
+  - email: Firebaseから取得したメールアドレス
+  - name: Firebaseから取得した名前
+  - firebase_uid: Firebase UID
+  - profile_image: Firebaseから取得したプロフィール画像URL（オプション）
 - password_hashはNULLに設定する（ソーシャルログインのため）
 - created_at、updated_atをUTCの現在時刻で記録する
-- email_verified_atをUTCの現在時刻で記録する（Googleで検証済み）
+- email_verified_atをUTCの現在時刻で記録する（Firebaseで検証済み）
 - is_activeを1（有効）に設定する
 - データベースに保存する
 
 ### 11. メールアドレスの重複チェック
 
-**WHEN** システムが新規ユーザーを登録しようとする  
-**AND** Googleから取得したメールアドレスが既に別のユーザーで登録されている  
-**THEN** システムは以下の処理を実行する
-- 既存のユーザーレコードにgoogle_idを追加する
+**WHEN** バックエンドが新規ユーザーを登録しようとする  
+**AND** Firebaseから取得したメールアドレスが既に別のユーザーで登録されている  
+**THEN** バックエンドは以下の処理を実行する
+- 既存のユーザーレコードにfirebase_uidを追加する
 - ログイン処理を実行する
 
-### 12. 認証トークンの生成
+### 12. カスタムトークンの生成（オプション）
 
 **WHEN** ユーザー登録またはログインが正常に完了する  
-**THEN** システムは以下の処理を実行する
-- JWTトークンを生成する
-- トークンにユーザーID、メールアドレス、発行日時、有効期限を含める
-- トークンをクライアントに返す
+**THEN** バックエンドは以下のいずれかの処理を実行する
+- オプションA: Firebase IDトークンをそのまま使用する
+- オプションB: 独自のJWTトークンを生成してクライアントに返す
+  - トークンにユーザーID、メールアドレス、発行日時、有効期限を含める
 
 ### 13. 登録成功時の処理
 
 **WHEN** ユーザー登録が正常に完了する  
-**THEN** システムは以下の処理を実行する
+**THEN** フロントエンドは以下の処理を実行する
 - ユーザーを自動的にログイン状態にする
-- 認証トークンをローカルストレージまたはクッキーに保存する
+- Firebase IDトークンをメモリまたはFirebase SDKに保持させる
+- バックエンドから返されたユーザー情報を状態管理に保存する
 - ダッシュボードページにリダイレクトする
 - 「登録が完了しました」という成功メッセージを表示する
 
 ### 14. ログイン成功時の処理
 
 **WHEN** 既存ユーザーのログインが正常に完了する  
-**THEN** システムは以下の処理を実行する
+**THEN** バックエンドは以下の処理を実行する
 - last_login_atをUTCの現在時刻で更新する
-- 認証トークンをローカルストレージまたはクッキーに保存する
+
+**THEN** フロントエンドは以下の処理を実行する
+- Firebase IDトークンをメモリまたはFirebase SDKに保持させる
+- バックエンドから返されたユーザー情報を状態管理に保存する
 - ダッシュボードページにリダイレクトする
 - 「ログインしました」という成功メッセージを表示する
 
 ### 15. エラーハンドリング
 
-**IF** Google APIとの通信中にネットワークエラーが発生する  
+**IF** Firebase Authとの通信中にネットワークエラーが発生する  
 **THEN** システムは「ネットワークエラーが発生しました。再度お試しください」というエラーメッセージを表示する
 
 **IF** データベースエラーやその他の予期しないエラーが発生する  
@@ -150,16 +151,18 @@
 
 ### 16. セキュリティ要件
 
-**WHEN** システムがOAuth 2.0フローを実装する  
+**WHEN** フロントエンドがFirebase Authを使用する  
 **THEN** システムは以下のセキュリティ対策を実装する
-- stateパラメータを使用してCSRF攻撃を防ぐ
 - HTTPSを使用して通信を暗号化する
-- IDトークンの署名を検証する
+- Firebase SDKが自動的にCSRF対策を実施する
+- IDトークンは自動的にリフレッシュされる
+
+**WHEN** バックエンドがFirebase IDトークンを検証する  
+**THEN** システムは以下のセキュリティ対策を実装する
+- Firebase Admin SDKを使用してIDトークンの署名を検証する
 - トークンの有効期限を検証する
 - トークンのissuerとaudienceを検証する
-
-**WHEN** システムがアクセストークンを保存する  
-**THEN** システムはトークンを安全に保存し、適切な有効期限を設定する
+- 検証済みのFirebase UIDのみを信頼する
 
 ### 17. レスポンシブデザイン
 
@@ -169,25 +172,19 @@
 ## 技術的な制約
 
 ### バックエンド技術スタック
-- OAuth 2.0クライアントにはgolang.org/x/oauth2を使用する
-- Google OAuth 2.0エンドポイント:
-  - 認証エンドポイント: https://accounts.google.com/o/oauth2/v2/auth
-  - トークンエンドポイント: https://oauth2.googleapis.com/token
-  - ユーザー情報エンドポイント: IDトークンから取得
-- 必要なスコープ: openid, email, profile
-- リダイレクトURIは環境変数で設定可能にする
-- Google Client IDとClient Secretは環境変数で管理する
-- stateパラメータはセッションまたはクッキーで管理する（有効期限10分）
-- JWTトークンの有効期限は24時間とする
+- Firebase Admin SDK for Goを使用する（firebase.google.com/go/v4）
+- Firebase IDトークンの検証にはAdmin SDKのauth.VerifyIDToken()を使用する
+- Firebase Project IDは環境変数で管理する
+- Firebase Service Account認証情報（JSON）は環境変数またはファイルで管理する
 - 日時はすべてUTCで保存し、DATETIME(6)型を使用する（マイクロ秒精度）
 
 ### データベーススキーマ要件
 
 **usersテーブルの拡張**:
-- `google_id` VARCHAR(255) UNIQUE - GoogleのユーザーID（sub）
+- `firebase_uid` VARCHAR(128) UNIQUE - Firebase UID
 - `profile_image` VARCHAR(500) - プロフィール画像URL
 - `password_hash` VARCHAR(255) - ソーシャルログインの場合はNULL許可に変更
-- INDEX on `google_id` for fast lookup
+- INDEX on `firebase_uid` for fast lookup
 
 既存のカラム:
 - `id` BINARY(16) PRIMARY KEY - UUID v7
@@ -203,23 +200,25 @@
 
 ### フロントエンド技術スタック
 - React 18+ with TypeScript
+- Firebase JavaScript SDK v10+（firebase/auth）
 - TanStack Router for routing
 - TanStack Query for data fetching
 - Jotai for global state management
 - ky for HTTP client
 - shadcn/ui for UI components
-- OAuth 2.0フローはバックエンドで処理し、フロントエンドはリダイレクトのみを行う
+- Firebase Authenticationの設定（Web API Key、Auth Domain）は環境変数で管理
 
 ## 非機能要件
 
-- Google認証フロー全体は30秒以内に完了する
-- ユーザー登録処理は3秒以内に完了する
+- Firebase認証フロー全体は30秒以内に完了する
+- バックエンドのユーザー登録処理は3秒以内に完了する
 - 「Googleでログイン」ボタンはGoogleのブランドガイドラインに準拠する
 - すべてのエラーは明確で理解しやすいメッセージで表示する
 - APIエラーレスポンスは統一されたフォーマット（requestId、code、details）で返す
 - ログはCloudLogging形式のJSON構造化ログとして出力する
 - ログにはcontext由来のrequest_idを自動付与する
-- OAuth 2.0フローのすべてのステップをログに記録する（デバッグ用）
+- Firebase認証フローの主要なステップをログに記録する（デバッグ用）
+- Firebase IDトークンのリフレッシュは自動的に行われる（Firebase SDKが管理）
 
 ## 関連するユビキタス言語
 
@@ -227,50 +226,59 @@
 - **ユーザー（user）**: ユーザー登録が済んだ利用者
 - **manager**: WebエンジニアのCVを管理するサービス
 - **ソーシャルログイン（social login）**: 外部サービス（Google等）のアカウントを使用した認証方式
-- **OAuth 2.0**: 認可のための業界標準プロトコル
-- **IDトークン（ID token）**: ユーザーの認証情報を含むJWTトークン
-- **アクセストークン（access token）**: リソースへのアクセス権を表すトークン
+- **Firebase Authentication**: Googleが提供する認証サービス
+- **Firebase UID**: Firebaseが発行するユーザーの一意識別子
+- **Firebase IDトークン（ID token）**: Firebase Authが発行するJWT形式の認証トークン
 
 ## アーキテクチャ上の考慮事項
 
 ### バックエンド（Clean Architecture + DDD + CQRS）
 
-- **Domain層**: User集約、Email値オブジェクト、GoogleID値オブジェクトを定義
-- **UseCase層**: RegisterUserWithGoogleコマンド、LoginWithGoogleコマンドを実装
-- **Adapter層**: OAuth 2.0コールバックハンドラー、HTTPハンドラー
+- **Domain層**: User集約、Email値オブジェクト、FirebaseUID値オブジェクトを定義
+- **UseCase層**: RegisterUserWithFirebaseコマンド、LoginWithFirebaseコマンドを実装
+- **Adapter層**: Firebase認証ハンドラー、HTTPハンドラー
 - **Infrastructure層**: 
   - sqlcを使用したリポジトリ実装
-  - Google OAuth 2.0クライアント実装
-  - JWTトークン生成サービス
+  - Firebase Admin SDK実装（IDトークン検証）
 - **CQRS**: ユーザー登録はコマンド側で実装（集約を使用）
 - **トランザクション**: User集約の保存は単一トランザクションで実行
-- **バリデーション**: IDトークンの検証、ユーザー情報の検証
+- **バリデーション**: Firebase IDトークンの検証、ユーザー情報の検証
 
 ### フロントエンド（レイヤードアーキテクチャ）
 
 - **Presentation層**: 
   - 登録/ログインページコンポーネント
   - Googleログインボタンコンポーネント
-  - OAuth 2.0コールバックページ
 - **Application層**: 
-  - useGoogleLogin Hook（リダイレクト処理）
-  - useAuthCallback Hook（コールバック処理）
+  - useFirebaseAuth Hook（Firebase認証処理）
+  - useRegisterWithFirebase Hook（バックエンド連携）
 - **Domain層**: ユーザー型定義
-- **Infrastructure層**: APIクライアント（ky）、OpenAPI生成コード
-- **状態管理**: 認証状態はJotaiで管理
+- **Infrastructure層**: 
+  - Firebase JavaScript SDK（認証処理）
+  - APIクライアント（ky）でバックエンドと通信
+  - OpenAPI生成コード
+- **状態管理**: 
+  - Firebase認証状態はFirebase SDKが管理
+  - アプリケーション固有のユーザー情報はJotaiで管理
 
 ## 備考
 
 - この機能はmanagerサービスのフロントエンドとバックエンドの両方で実装が必要
 - メールアドレス/パスワードによる登録機能と併用可能
-- 同じメールアドレスで両方の認証方式を使用できる（google_idを追加）
-- Googleで認証されたメールアドレスは自動的に検証済みとみなす（email_verified_at設定）
-- Google OAuth 2.0の設定（Client ID、Client Secret）はGoogle Cloud Consoleで事前に取得する必要がある
-- リダイレクトURIはGoogle Cloud Consoleで登録する必要がある
+- 同じメールアドレスで両方の認証方式を使用できる（firebase_uidを追加）
+- Firebaseで認証されたメールアドレスは自動的に検証済みとみなす（email_verified_at設定）
+- Firebase Authenticationの設定はFirebase Consoleで事前に行う必要がある
+  - Google認証プロバイダーを有効化
+  - 承認済みドメインを登録
 - 将来的には他のソーシャルログイン（GitHub、Microsoft等）も追加可能な設計とする
+  - Firebase Authは複数の認証プロバイダーをサポート
 - データベーススキーマはsqldefでマイグレーション管理する
 - SQLクエリはsqlcで型安全なGoコードを生成する
 - APIエンドポイントは以下とする:
-  - `/techcv/api/v1/auth/google/login` - Google認証開始
-  - `/techcv/api/v1/auth/google/callback` - OAuth 2.0コールバック
-- stateパラメータの管理にはセッションストア（Redis等）の使用を検討する
+  - `/techcv/api/v1/auth/firebase/register` - Firebase認証後のユーザー登録
+  - `/techcv/api/v1/auth/firebase/login` - Firebase認証後のログイン
+- Firebase IDトークンはHTTPヘッダー（Authorization: Bearer <token>）で送信する
+- Firebase Admin SDKの初期化にはService Account認証情報が必要
+  - 本番環境ではGoogle Cloud Secret Managerの使用を推奨
+- Firebase IDトークンの有効期限は1時間（自動リフレッシュ）
+- バックエンドでは毎回Firebase IDトークンを検証する必要がある
