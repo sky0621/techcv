@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/vrischmann/envconfig"
@@ -16,7 +15,6 @@ type Config struct {
 	App      AppConfig
 	Server   ServerConfig
 	Database DatabaseConfig
-	Auth     AuthConfig
 }
 
 // AppConfig holds application-wide settings.
@@ -37,12 +35,6 @@ type DatabaseConfig struct {
 	User     string `envconfig:"DB_USER,default=manager"`
 	Password string `envconfig:"DB_PASSWORD,default=manager"`
 	Params   string `envconfig:"DB_PARAMS,default=parseTime=true&loc=UTC&charset=utf8mb4"`
-}
-
-// AuthConfig provides configuration for authentication workflows.
-type AuthConfig struct {
-	VerificationURLBase string        `envconfig:"VERIFICATION_URL_BASE,default=http://localhost:5173/auth/verify"`
-	VerificationTTL     time.Duration `envconfig:"VERIFICATION_TTL,default=24h"`
 }
 
 // Load reads .env files (if present) and populates the Config struct via envconfig.

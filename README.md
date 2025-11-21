@@ -6,7 +6,6 @@ Webエンジニアの技術的な履歴（Curriculum Vitae）をまとめるプ�
 `services/manager/backend` ディレクトリで以下を実行します。
 
 - `make generate` – `docs/openapi.yaml` をもとに Echo 互換のハンドラや型を再生成します。
-- `VERIFICATION_URL_BASE` – 任意。デフォルトは `http://localhost:5173/auth/verify` で、登録メールに記載する確認リンクの生成に使われます。
 
 ## Makefileの使い方
 
