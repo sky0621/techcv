@@ -1,4 +1,5 @@
 .idea
+.toolchain
 bin
 bin-tools/
 node_modules

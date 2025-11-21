@@ -51,22 +51,39 @@
 **WHEN** フロントエンドがエラーを受け取る  
 **THEN** システムは「Google認証がキャンセルされました」というメッセージを表示する
 
-### 6. Firebase IDトークンの取得
+### 6. Firebase IDトークンとユーザー情報の取得
 
 **WHEN** Firebase Authから認証成功の結果を受け取る  
 **THEN** フロントエンドは以下の処理を実行する
 - Firebase UserオブジェクトからIDトークンを取得する
-- ユーザー情報（uid、email、displayName、photoURL）を取得する
+- Firebase Userオブジェクトから以下の全ての情報を取得する
+  - uid: Firebase UID
+  - email: メールアドレス
+  - emailVerified: メール確認済みフラグ
+  - displayName: 表示名
+  - photoURL: プロフィール画像URL
+  - phoneNumber: 電話番号（Googleアカウントに設定されている場合）
+  - metadata.creationTime: Firebase上のアカウント作成日時
+  - metadata.lastSignInTime: 最終サインイン日時
+  - providerData: 認証プロバイダー情報（Google）
 
 **IF** IDトークンの取得に失敗する  
 **THEN** システムは「認証に失敗しました。再度お試しください」というエラーメッセージを表示する
 
-### 7. バックエンドへのIDトークン送信
+### 7. バックエンドへのIDトークンとユーザー情報の送信
 
-**WHEN** フロントエンドがFirebase IDトークンを取得する  
+**WHEN** フロントエンドがFirebase IDトークンとユーザー情報を取得する  
 **THEN** フロントエンドは以下の処理を実行する
 - バックエンドのユーザー登録/ログインAPIにIDトークンを送信する
-- Firebase UID、メールアドレス、名前、プロフィール画像URLを含める
+- Firebase Userオブジェクトから取得した全ての情報を含める
+  - uid
+  - email
+  - emailVerified
+  - displayName
+  - photoURL
+  - phoneNumber
+  - metadata（creationTime、lastSignInTime）
+  - providerData
 
 ### 8. Firebase IDトークンの検証
 
@@ -92,14 +109,18 @@
 **WHEN** 既存ユーザーが見つからない  
 **THEN** バックエンドは以下の処理を実行する
 - UUID v7形式でユーザーIDを生成する
-- Firebaseから取得した情報を使用して新しいユーザーレコードを作成する
-  - email: Firebaseから取得したメールアドレス
-  - name: Firebaseから取得した名前
+- Firebaseから取得した全ての情報を使用して新しいユーザーレコードを作成する
   - firebase_uid: Firebase UID
-  - profile_image: Firebaseから取得したプロフィール画像URL（オプション）
-- password_hashはNULLに設定する（ソーシャルログインのため）
+  - email: メールアドレス
+  - email_verified: メール確認済みフラグ（Firebaseから取得）
+  - display_name: 表示名
+  - photo_url: プロフィール画像URL
+  - phone_number: 電話番号
+  - firebase_created_at: Firebase上のアカウント作成日時
+  - firebase_last_sign_in_at: Firebase上の最終サインイン日時
+  - provider_id: 認証プロバイダーID（google.com）
 - created_at、updated_atをUTCの現在時刻で記録する
-- email_verified_atをUTCの現在時刻で記録する（Firebaseで検証済み）
+- email_verified_atをFirebaseのemailVerifiedフラグに基づいて設定する
 - is_activeを1（有効）に設定する
 - データベースに保存する
 
@@ -111,20 +132,21 @@
 - 既存のユーザーレコードにfirebase_uidを追加する
 - ログイン処理を実行する
 
-### 12. カスタムトークンの生成（オプション）
+### 12. 認証トークンの管理
 
 **WHEN** ユーザー登録またはログインが正常に完了する  
-**THEN** バックエンドは以下のいずれかの処理を実行する
-- オプションA: Firebase IDトークンをそのまま使用する
-- オプションB: 独自のJWTトークンを生成してクライアントに返す
-  - トークンにユーザーID、メールアドレス、発行日時、有効期限を含める
+**THEN** システムは以下の処理を実行する
+- Firebase IDトークンをそのまま認証トークンとして使用する
+- 独自のJWTトークンは生成しない
+- バックエンドはFirebase IDトークンを検証することでユーザーを認証する
 
 ### 13. 登録成功時の処理
 
 **WHEN** ユーザー登録が正常に完了する  
 **THEN** フロントエンドは以下の処理を実行する
 - ユーザーを自動的にログイン状態にする
-- Firebase IDトークンをメモリまたはFirebase SDKに保持させる
+- Firebase IDトークンはFirebase SDKが自動的に管理する
+- バックエンドへのAPIリクエスト時は、Firebase SDKから最新のIDトークンを取得してAuthorizationヘッダーに設定する
 - バックエンドから返されたユーザー情報を状態管理に保存する
 - ダッシュボードページにリダイレクトする
 - 「登録が完了しました」という成功メッセージを表示する
@@ -136,12 +158,45 @@
 - last_login_atをUTCの現在時刻で更新する
 
 **THEN** フロントエンドは以下の処理を実行する
-- Firebase IDトークンをメモリまたはFirebase SDKに保持させる
+- Firebase IDトークンはFirebase SDKが自動的に管理する
+- バックエンドへのAPIリクエスト時は、Firebase SDKから最新のIDトークンを取得してAuthorizationヘッダーに設定する
 - バックエンドから返されたユーザー情報を状態管理に保存する
 - ダッシュボードページにリダイレクトする
 - 「ログインしました」という成功メッセージを表示する
 
-### 15. エラーハンドリング
+### 15. 認証が必要なAPIリクエスト
+
+**WHEN** フロントエンドが認証が必要なAPIをリクエストする  
+**THEN** フロントエンドは以下の処理を実行する
+- Firebase SDKのcurrentUser.getIdToken()を呼び出して最新のIDトークンを取得する
+- IDトークンをAuthorizationヘッダー（Bearer <token>）に設定する
+- APIリクエストを送信する
+
+**WHEN** バックエンドが認証が必要なAPIリクエストを受け取る  
+**THEN** バックエンドは以下の処理を実行する
+- AuthorizationヘッダーからFirebase IDトークンを抽出する
+- Firebase Admin SDKでIDトークンを検証する
+- 検証成功後、トークンからFirebase UIDを取得する
+- Firebase UIDを使用してユーザー情報をデータベースから取得する
+- リクエスト処理を続行する
+
+**IF** IDトークンの検証に失敗する  
+**THEN** バックエンドは401 Unauthorizedエラーを返す
+
+### 16. IDトークンのリフレッシュ
+
+**WHEN** Firebase IDトークンの有効期限が近づく  
+**THEN** Firebase SDKは以下の処理を自動的に実行する
+- バックグラウンドでIDトークンをリフレッシュする
+- 新しいIDトークンを取得する
+- アプリケーションコードは何もする必要がない
+
+**WHEN** フロントエンドがgetIdToken()を呼び出す  
+**THEN** Firebase SDKは以下の処理を実行する
+- 現在のIDトークンが有効であればそれを返す
+- 有効期限が切れている場合は自動的にリフレッシュしてから返す
+
+### 17. エラーハンドリング
 
 **IF** Firebase Authとの通信中にネットワークエラーが発生する  
 **THEN** システムは「ネットワークエラーが発生しました。再度お試しください」というエラーメッセージを表示する
@@ -149,7 +204,16 @@
 **IF** データベースエラーやその他の予期しないエラーが発生する  
 **THEN** システムは「登録処理中にエラーが発生しました。しばらくしてから再度お試しください」というエラーメッセージを表示する
 
-### 16. セキュリティ要件
+**IF** Firebase IDトークンの有効期限が切れている、または無効である  
+**THEN** バックエンドは401 Unauthorizedエラーを返す
+
+**WHEN** フロントエンドが401エラーを受け取る  
+**THEN** フロントエンドは以下の処理を実行する
+- ユーザーをログアウトさせる
+- ログインページにリダイレクトする
+- 「セッションの有効期限が切れました。再度ログインしてください」というメッセージを表示する
+
+### 18. セキュリティ要件
 
 **WHEN** フロントエンドがFirebase Authを使用する  
 **THEN** システムは以下のセキュリティ対策を実装する
@@ -164,7 +228,7 @@
 - トークンのissuerとaudienceを検証する
 - 検証済みのFirebase UIDのみを信頼する
 
-### 17. レスポンシブデザイン
+### 19. レスポンシブデザイン
 
 **WHEN** ゲストがモバイルデバイスから登録ページにアクセスする  
 **THEN** システムはモバイル画面に最適化されたレイアウトで「Googleでログイン」ボタンを表示する
@@ -180,23 +244,29 @@
 
 ### データベーススキーマ要件
 
-**usersテーブルの拡張**:
-- `firebase_uid` VARCHAR(128) UNIQUE - Firebase UID
-- `profile_image` VARCHAR(500) - プロフィール画像URL
-- `password_hash` VARCHAR(255) - ソーシャルログインの場合はNULL許可に変更
+**usersテーブル**:
+- `id` BINARY(16) PRIMARY KEY - UUID v7（アプリケーション内部ID）
+- `firebase_uid` VARCHAR(128) NOT NULL UNIQUE - Firebase UID
+- `email` VARCHAR(255) NOT NULL UNIQUE - メールアドレス
+- `email_verified` TINYINT(1) NOT NULL DEFAULT 0 - メール確認済みフラグ（Firebaseから取得）
+- `display_name` VARCHAR(255) - 表示名（Firebaseから取得）
+- `photo_url` VARCHAR(500) - プロフィール画像URL（Firebaseから取得）
+- `phone_number` VARCHAR(50) - 電話番号（Firebaseから取得、オプション）
+- `provider_id` VARCHAR(50) NOT NULL - 認証プロバイダーID（例: google.com）
+- `firebase_created_at` DATETIME(6) - Firebase上のアカウント作成日時
+- `firebase_last_sign_in_at` DATETIME(6) - Firebase上の最終サインイン日時
+- `bio` TEXT - 自己紹介（アプリケーション独自項目）
+- `is_active` TINYINT(1) NOT NULL DEFAULT 1 - アクティブ状態
+- `email_verified_at` DATETIME(6) - メール確認日時（アプリケーション側で管理）
+- `last_login_at` DATETIME(6) - 最終ログイン日時（アプリケーション側で管理）
+- `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) - 作成日時
+- `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) - 更新日時
+- `deleted_at` DATETIME(6) - 削除日時（論理削除用）
+- UNIQUE KEY on `email`
+- UNIQUE KEY on `firebase_uid`
 - INDEX on `firebase_uid` for fast lookup
-
-既存のカラム:
-- `id` BINARY(16) PRIMARY KEY - UUID v7
-- `email` VARCHAR(255) NOT NULL UNIQUE
-- `name` VARCHAR(100)
-- `bio` TEXT
-- `is_active` TINYINT(1) NOT NULL DEFAULT 1
-- `email_verified_at` DATETIME(6)
-- `last_login_at` DATETIME(6)
-- `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-- `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
-- `deleted_at` DATETIME(6)
+- INDEX on `provider_id` for provider-based queries
+- INDEX on `deleted_at` for soft delete queries
 
 ### フロントエンド技術スタック
 - React 18+ with TypeScript
@@ -212,6 +282,7 @@
 
 - Firebase認証フロー全体は30秒以内に完了する
 - バックエンドのユーザー登録処理は3秒以内に完了する
+- Firebase IDトークンの検証は100ms以内に完了する
 - 「Googleでログイン」ボタンはGoogleのブランドガイドラインに準拠する
 - すべてのエラーは明確で理解しやすいメッセージで表示する
 - APIエラーレスポンスは統一されたフォーマット（requestId、code、details）で返す
@@ -219,6 +290,8 @@
 - ログにはcontext由来のrequest_idを自動付与する
 - Firebase認証フローの主要なステップをログに記録する（デバッグ用）
 - Firebase IDトークンのリフレッシュは自動的に行われる（Firebase SDKが管理）
+- 認証が必要な全てのAPIエンドポイントでFirebase IDトークンを検証する
+- IDトークンの検証失敗時は適切なエラーレスポンスを返す（401 Unauthorized）
 
 ## 関連するユビキタス言語
 
@@ -264,21 +337,37 @@
 ## 備考
 
 - この機能はmanagerサービスのフロントエンドとバックエンドの両方で実装が必要
-- メールアドレス/パスワードによる登録機能と併用可能
-- 同じメールアドレスで両方の認証方式を使用できる（firebase_uidを追加）
+- 認証方式はソーシャルログイン（Firebase Authentication）のみを使用
+- パスワードによる認証は実装しない（password_hashカラムは不要）
 - Firebaseで認証されたメールアドレスは自動的に検証済みとみなす（email_verified_at設定）
-- Firebase Authenticationの設定はFirebase Consoleで事前に行う必要がある
+
+### Firebase Authenticationの設定
+- Firebase Consoleで事前に設定が必要
   - Google認証プロバイダーを有効化
   - 承認済みドメインを登録
-- 将来的には他のソーシャルログイン（GitHub、Microsoft等）も追加可能な設計とする
-  - Firebase Authは複数の認証プロバイダーをサポート
-- データベーススキーマはsqldefでマイグレーション管理する
-- SQLクエリはsqlcで型安全なGoコードを生成する
-- APIエンドポイントは以下とする:
-  - `/techcv/api/v1/auth/firebase/register` - Firebase認証後のユーザー登録
-  - `/techcv/api/v1/auth/firebase/login` - Firebase認証後のログイン
-- Firebase IDトークンはHTTPヘッダー（Authorization: Bearer <token>）で送信する
 - Firebase Admin SDKの初期化にはService Account認証情報が必要
   - 本番環境ではGoogle Cloud Secret Managerの使用を推奨
-- Firebase IDトークンの有効期限は1時間（自動リフレッシュ）
-- バックエンドでは毎回Firebase IDトークンを検証する必要がある
+
+### 認証トークンの管理
+- Firebase IDトークンを認証トークンとして使用する
+- 独自のJWTトークンは発行しない
+- Firebase IDトークンはHTTPヘッダー（Authorization: Bearer <token>）で送信する
+- Firebase IDトークンの有効期限は1時間（Firebase SDKが自動リフレッシュ）
+- バックエンドでは認証が必要な全てのAPIリクエストでFirebase IDトークンを検証する
+- フロントエンドはFirebase SDKのgetIdToken()を使用して常に最新のトークンを取得する
+
+### データベース設計
+- データベーススキーマはsqldefでマイグレーション管理する
+- SQLクエリはsqlcで型安全なGoコードを生成する
+- ユーザーの一意性はfirebase_uidで保証される
+
+### APIエンドポイント
+- `/techcv/api/v1/auth/firebase/register` - Firebase認証後のユーザー登録
+- `/techcv/api/v1/auth/firebase/login` - Firebase認証後のログイン
+- 上記以外の認証が必要なAPIは全てAuthorizationヘッダーでFirebase IDトークンを要求する
+
+### 将来の拡張性
+- 他のソーシャルログイン（GitHub、Microsoft等）も追加可能な設計
+  - Firebase Authは複数の認証プロバイダーをサポート
+  - データベーススキーマは変更不要（firebase_uidで統一）
+  - provider_idカラムで認証プロバイダーを識別
