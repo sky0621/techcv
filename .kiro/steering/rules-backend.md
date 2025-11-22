@@ -1,39 +1,11 @@
-# Backendのプロジェクトガイドライン
+# Backendコーディング時のルール
 
-## プロジェクト概要
-WebエンジニアのCV（履歴書＋職務経歴書）の管理やシステム全体に関わる設定等を行うためのWebAPIを提供する
+- openapi.yamlを直接修正しない
+  - 修正するのはspec配下のYamlファイル
+  - openapi.yamlはredoclyによって自動生成される対象
 
-## 技術スタック
-- プログラミング言語
-  - Golang 1.25
-- Webフレームワーク
-  - Echo
-- API仕様
-  - OpenAPI 3.0.3
-- OpenAPIライブラリ
-  - kin-openapi (github.com/getkin/kin-openapi)
-- OpenAPIコード生成
-  - oapi-codegen (github.com/oapi-codegen/oapi-codegen)
-- データベースアクセス
-  - sqlc
-- データベースマイグレーション
-  - sqldef
-- データベース
-  - MySQL 8.0+
-- 認証
-  - Google OAuth 2.0 (golang.org/x/oauth2)
-- 環境変数管理
-  - envconfig (github.com/vrischmann/envconfig)
-- ローカル環境変数
-  - godotenv (github.com/joho/godotenv)
-- ログ
-  - slog (Go標準ライブラリ)
-- タスクランナー
-  - Makefile
-- Linter
-  - golangci-lint
+- sqlcによって生成されたファイルを直接修正しない
 
-## ADR
 - ID
   - 各種IDには数値ではなくUUID v7を採用する
 
@@ -54,7 +26,7 @@ WebエンジニアのCV（履歴書＋職務経歴書）の管理やシステム
     - `/techcv/api/v1` をベースにする
 
 - OpenAPI仕様の採用バージョン
-  - OpenAPI 3.0 を採用する
+  - OpenAPI 3.0.3 を採用する
 
 - DIライブラリ
   - 現時点では導入しない
@@ -105,7 +77,7 @@ WebエンジニアのCV（履歴書＋職務経歴書）の管理やシステム
 
 - HTTPレスポンス構造
   - すべての成功レスポンス（2xx系ステータスコード）はエンドポイントによって個別に定義する
-  - エラーレスポンス構造
+  - エラーレスポンス構造は以下の定義とする
 ```
 {
   "requestId": "88374925",

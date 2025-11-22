@@ -236,46 +236,61 @@
 ## 技術的な制約
 
 ### バックエンド技術スタック
+- プログラミング言語: Golang 1.25
+- Webフレームワーク: Echo
 - Firebase Admin SDK for Goを使用する（firebase.google.com/go/v4）
 - Firebase IDトークンの検証にはAdmin SDKのauth.VerifyIDToken()を使用する
-- Firebase Project IDは環境変数で管理する
+- Firebase Project IDは環境変数で管理する（envconfigを使用）
 - Firebase Service Account認証情報（JSON）は環境変数またはファイルで管理する
+- ローカル環境変数の読み込みにはgodotenvを使用する
+- ログ出力にはslog（Go標準ライブラリ）を使用する
+- ID生成にはgoogle/uuidのUUID v7を使用する
+- データベースアクセスにはsqlcを使用する
+- データベースマイグレーションにはsqldefを使用する
+- OpenAPI仕様はOpenAPI 3.0.3を使用する
+- OpenAPIコード生成にはoapi-codegenを使用する
 - 日時はすべてUTCで保存し、DATETIME(6)型を使用する（マイクロ秒精度）
+- 時刻の入出力はISO8601拡張形式、UTC、ミリ秒精度を使用する
 
 ### データベーススキーマ要件
 
 **usersテーブル**:
-- `id` BINARY(16) PRIMARY KEY - UUID v7（アプリケーション内部ID）
-- `firebase_uid` VARCHAR(128) NOT NULL UNIQUE - Firebase UID
-- `email` VARCHAR(255) NOT NULL UNIQUE - メールアドレス
-- `email_verified` TINYINT(1) NOT NULL DEFAULT 0 - メール確認済みフラグ（Firebaseから取得）
-- `display_name` VARCHAR(255) - 表示名（Firebaseから取得）
-- `photo_url` VARCHAR(500) - プロフィール画像URL（Firebaseから取得）
-- `phone_number` VARCHAR(50) - 電話番号（Firebaseから取得、オプション）
-- `provider_id` VARCHAR(50) NOT NULL - 認証プロバイダーID（例: google.com）
-- `firebase_created_at` DATETIME(6) - Firebase上のアカウント作成日時
-- `firebase_last_sign_in_at` DATETIME(6) - Firebase上の最終サインイン日時
-- `bio` TEXT - 自己紹介（アプリケーション独自項目）
-- `is_active` TINYINT(1) NOT NULL DEFAULT 1 - アクティブ状態
-- `email_verified_at` DATETIME(6) - メール確認日時（アプリケーション側で管理）
-- `last_login_at` DATETIME(6) - 最終ログイン日時（アプリケーション側で管理）
-- `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) - 作成日時
-- `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) - 更新日時
-- `deleted_at` DATETIME(6) - 削除日時（論理削除用）
-- UNIQUE KEY on `email`
-- UNIQUE KEY on `firebase_uid`
-- INDEX on `firebase_uid` for fast lookup
-- INDEX on `provider_id` for provider-based queries
-- INDEX on `deleted_at` for soft delete queries
+```sql
+CREATE TABLE users (
+    id BINARY(16) PRIMARY KEY COMMENT 'UUID v7（アプリケーション内部ID）',
+    firebase_uid VARCHAR(128) NOT NULL UNIQUE COMMENT 'Firebase UID',
+    email VARCHAR(255) NOT NULL UNIQUE COMMENT 'メールアドレス',
+    email_verified TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'メール確認済みフラグ（Firebaseから取得）',
+    display_name VARCHAR(255) COMMENT '表示名（Firebaseから取得）',
+    photo_url VARCHAR(500) COMMENT 'プロフィール画像URL（Firebaseから取得）',
+    phone_number VARCHAR(50) COMMENT '電話番号（Firebaseから取得、オプション）',
+    provider_id VARCHAR(50) NOT NULL COMMENT '認証プロバイダーID（例: google.com）',
+    firebase_created_at DATETIME(6) COMMENT 'Firebase上のアカウント作成日時',
+    firebase_last_sign_in_at DATETIME(6) COMMENT 'Firebase上の最終サインイン日時',
+    bio TEXT COMMENT '自己紹介（アプリケーション独自項目）',
+    is_active TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'アクティブ状態',
+    email_verified_at DATETIME(6) COMMENT 'メール確認日時（アプリケーション側で管理）',
+    last_login_at DATETIME(6) COMMENT '最終ログイン日時（アプリケーション側で管理）',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '作成日時',
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新日時',
+    deleted_at DATETIME(6) COMMENT '削除日時（論理削除用）',
+    
+    UNIQUE KEY uq_users_email (email),
+    UNIQUE KEY uq_users_firebase_uid (firebase_uid),
+    INDEX idx_users_firebase_uid (firebase_uid),
+    INDEX idx_users_provider_id (provider_id),
+    INDEX idx_users_deleted_at (deleted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ユーザー情報';
+```
 
 ### フロントエンド技術スタック
-- React 18+ with TypeScript
+- フレームワーク: React 18+ with TypeScript
 - Firebase JavaScript SDK v10+（firebase/auth）
-- TanStack Router for routing
-- TanStack Query for data fetching
-- Jotai for global state management
-- ky for HTTP client
-- shadcn/ui for UI components
+- UIライブラリ: shadcn/ui
+- 状態管理: Jotai
+- ルーティング: TanStack Router
+- HTTPクライアント: TanStack Query
+- OpenAPIコード生成: OpenAPI Generator
 - Firebase Authenticationの設定（Web API Key、Auth Domain）は環境変数で管理
 
 ## 非機能要件
@@ -285,9 +300,25 @@
 - Firebase IDトークンの検証は100ms以内に完了する
 - 「Googleでログイン」ボタンはGoogleのブランドガイドラインに準拠する
 - すべてのエラーは明確で理解しやすいメッセージで表示する
-- APIエラーレスポンスは統一されたフォーマット（requestId、code、details）で返す
+- APIエラーレスポンスは統一されたフォーマットで返す
+  ```json
+  {
+    "requestId": "88374925",
+    "code": "VALIDATION_ERROR",
+    "details": [
+      {
+        "field": "email",
+        "code": "INVALID_EMAIL_FORMAT"
+      }
+    ]
+  }
+  ```
+  - requestId: 必須 - リクエストをユニークに特定するためのランダムID
+  - code: omitempty - エラーコード（大文字のスネークケース）
+  - details: omitempty - 詳細エラー情報の配列（主にバリデーションエラー用）
 - ログはCloudLogging形式のJSON構造化ログとして出力する
 - ログにはcontext由来のrequest_idを自動付与する
+- slogでのログ出力はContext付きログ関数を使用する
 - Firebase認証フローの主要なステップをログに記録する（デバッグ用）
 - Firebase IDトークンのリフレッシュは自動的に行われる（Firebase SDKが管理）
 - 認証が必要な全てのAPIエンドポイントでFirebase IDトークンを検証する
@@ -328,8 +359,8 @@
 - **Domain層**: ユーザー型定義
 - **Infrastructure層**: 
   - Firebase JavaScript SDK（認証処理）
-  - APIクライアント（ky）でバックエンドと通信
-  - OpenAPI生成コード
+  - TanStack Query（HTTPクライアント）でバックエンドと通信
+  - OpenAPI Generatorで生成されたコード
 - **状態管理**: 
   - Firebase認証状態はFirebase SDKが管理
   - アプリケーション固有のユーザー情報はJotaiで管理
@@ -357,14 +388,19 @@
 - フロントエンドはFirebase SDKのgetIdToken()を使用して常に最新のトークンを取得する
 
 ### データベース設計
+- データベース: MySQL 8.0+
 - データベーススキーマはsqldefでマイグレーション管理する
 - SQLクエリはsqlcで型安全なGoコードを生成する
+- sqlcによって生成されたファイルは直接修正しない
 - ユーザーの一意性はfirebase_uidで保証される
+- 文字コード: utf8mb4、照合順序: utf8mb4_unicode_ci
 
 ### APIエンドポイント
+- エンドポイントベース: `/techcv/api/v1`
 - `/techcv/api/v1/auth/firebase/register` - Firebase認証後のユーザー登録
 - `/techcv/api/v1/auth/firebase/login` - Firebase認証後のログイン
 - 上記以外の認証が必要なAPIは全てAuthorizationヘッダーでFirebase IDトークンを要求する
+- REST APIを採用する（リソースベースで扱いが難しい場合は原則を崩すことも認める）
 
 ### 将来の拡張性
 - 他のソーシャルログイン（GitHub、Microsoft等）も追加可能な設計

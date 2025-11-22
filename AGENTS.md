@@ -10,8 +10,8 @@
 - `.kiro/steering/coding-standards-database.md`
 - `.kiro/steering/coding-standards-frontend.md`
 - `.kiro/steering/coding-standards-sqlc.md`
-- `.kiro/steering/guidelines-backend.md`
-- `.kiro/steering/guidelines-frontend.md`
-- `.kiro/steering/howto-coding-backend.md`
+- `.kiro/steering/rules-backend.md`
+- `.kiro/steering/tech-stack-backend.md`
+- `.kiro/steering/tech-stack-frontend.md`
 - `.kiro/steering/services.md`
 - `.kiro/steering/ubiquitous_language.md`
