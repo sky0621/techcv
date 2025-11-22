@@ -1,4 +1,4 @@
-module github.com/sky0621/techcv/services/manager/backend
+module github.com/sky0621/techcv/manager/backend
 
 go 1.25
 
@@ -8,18 +8,19 @@ tool (
 )
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/go-sql-driver/mysql v1.7.1
+	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.13.4
-	github.com/vrischmann/envconfig v1.4.0
-	golang.org/x/crypto v0.44.1-0.20251119192837-e79546e28b85
+	github.com/vrischmann/envconfig v1.4.1
+	golang.org/x/crypto v0.45.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	4d63.com/gocheckcompilerdirectives v1.3.0 // indirect
 	4d63.com/gochecknoglobals v0.2.2 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/4meepo/tagalign v1.4.2 // indirect
 	github.com/Abirdcfly/dupword v0.1.3 // indirect
 	github.com/Antonboom/errname v1.0.0 // indirect
@@ -195,7 +196,7 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/mod v0.29.0 // indirect
-	golang.org/x/net v0.46.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
