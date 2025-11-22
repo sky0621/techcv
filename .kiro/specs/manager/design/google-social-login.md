@@ -1,8 +1,8 @@
-# Google ソーシャルログイン設計書
+# Firebase Authentication（Google）ソーシャルログイン設計書
 
 ## 概要
 
-本設計書は、managerサービスにおけるGoogleアカウントを使用したソーシャルログイン機能の詳細設計を記述します。OAuth 2.0プロトコルを使用してGoogleで認証を行い、ユーザー登録とログインを実現します。
+本設計書は、managerサービスにおけるFirebase Authenticationを使用したGoogleソーシャルログイン機能の詳細設計を記述します。Firebase Authenticationを活用することで、OAuth 2.0の複雑な実装を避け、セキュアで保守性の高い認証システムを実現します。
 
 ## アーキテクチャ概要
 
@@ -12,65 +12,98 @@
 sequenceDiagram
     participant User as ゲスト
     participant Frontend as Frontend<br/>(React)
+    participant Firebase as Firebase<br/>Authentication
     participant Backend as Backend<br/>(Go/Echo)
-    participant Google as Google<br/>OAuth 2.0
     participant DB as Database<br/>(MySQL)
 
     User->>Frontend: 「Googleでログイン」クリック
-    Frontend->>Backend: GET /auth/google/login
-    Backend->>Backend: stateパラメータ生成
-    Backend->>DB: state保存（セッション）
-    Backend->>Frontend: Google認証URLにリダイレクト
-    Frontend->>Google: 認証ページ表示
-    User->>Google: 認証許可
-    Google->>Backend: GET /auth/google/callback<br/>(code, state)
-    Backend->>DB: state検証
-    Backend->>Google: POST /token<br/>(code交換)
-    Google->>Backend: access_token, id_token
-    Backend->>Backend: IDトークン検証
-    Backend->>DB: ユーザー検索/登録
-    Backend->>Backend: JWT生成
-    Backend->>Frontend: リダイレクト + JWT
+    Frontend->>Firebase: signInWithPopup(GoogleAuthProvider)
+    Firebase->>User: Google認証ページ表示
+    User->>Firebase: 認証許可
+    Firebase->>Frontend: UserCredential + IDトークン
+    Frontend->>Frontend: getIdToken()でIDトークン取得
+    Frontend->>Backend: POST /auth/firebase/register<br/>Authorization: Bearer <token>
+    Backend->>Firebase: Admin SDK: VerifyIDToken()
+    Firebase->>Backend: トークン検証結果
+    Backend->>DB: Firebase UIDでユーザー検索
+    alt 新規ユーザー
+        Backend->>DB: ユーザー登録（UUID v7生成）
+    else 既存ユーザー
+        Backend->>DB: last_login_at更新
+    end
+    Backend->>Frontend: ユーザー情報返却
     Frontend->>User: ダッシュボード表示
 ```
 
+## 技術スタック
+
+### バックエンド
+- **言語**: Golang 1.25
+- **Webフレームワーク**: Echo
+- **Firebase**: Firebase Admin SDK for Go (firebase.google.com/go/v4)
+- **データベース**: MySQL 8.0+
+- **データベースアクセス**: sqlc
+- **マイグレーション**: sqldef
+- **ID生成**: google/uuid (UUID v7)
+- **環境変数**: envconfig + godotenv
+- **ログ**: slog (標準ライブラリ)
+- **OpenAPI**: OpenAPI 3.0.3 + oapi-codegen
+
+### フロントエンド
+- **フレームワーク**: React 18+ with TypeScript
+- **Firebase**: Firebase JavaScript SDK v10+ (firebase/auth)
+- **UIライブラリ**: shadcn/ui
+- **状態管理**: Jotai
+- **ルーティング**: TanStack Router
+- **HTTPクライアント**: TanStack Query
+- **OpenAPI**: OpenAPI Generator
+
 ## バックエンド設計
 
-### レイヤー構成
+### ディレクトリ構造
 
 ```
-internal/
-├── domain/
-│   ├── model/
+services/manager/backend/
+├── internal/
+│   ├── domain/
+│   │   ├── model/
+│   │   │   └── user/
+│   │   │       ├── user.go              # User集約
+│   │   │       ├── email.go             # Email値オブジェクト
+│   │   │       ├── firebase_uid.go      # FirebaseUID値オブジェクト
+│   │   │       └── user_id.go           # UserID値オブジェクト
+│   │   ├── repository/
+│   │   │   └── user_command.go          # UserCommandRepository IF
+│   │   └── service/
+│   │       └── user_domain_service.go   # ドメインサービス
+│   │
+│   ├── usecase/
 │   │   └── user/
-│   │       ├── user.go              # User集約
-│   │       ├── email.go             # Email値オブジェクト
-│   │       ├── google_id.go         # GoogleID値オブジェクト
-│   │       └── user_id.go           # UserID値オブジェクト
-│   ├── repository/
-│   │   └── user_command.go          # UserCommandRepository IF
-│   └── service/
-│       └── user_domain_service.go   # ドメインサービス
+│   │       └── command/
+│   │           ├── register_with_firebase.go  # Firebase登録ユースケース
+│   │           └── login_with_firebase.go     # Firebaseログインユースケース
+│   │
+│   ├── adapter/
+│   │   └── controller/
+│   │       └── auth/
+│   │           └── firebase_auth_controller.go  # Firebase認証ハンドラー
+│   │
+│   └── infrastructure/
+│       ├── persistence/
+│       │   ├── sqlc/                    # sqlc生成コード
+│       │   ├── query/                   # SQLクエリファイル
+│       │   ├── schema/                  # スキーマ定義
+│       │   └── user_command_repository.go
+│       ├── firebase/
+│       │   └── firebase_client.go       # Firebase Admin SDK
+│       └── middleware/
+│           └── firebase_auth_middleware.go  # 認証ミドルウェア
 │
-├── usecase/
-│   └── user/
-│       └── command/
-│           ├── register_with_google.go  # Google登録ユースケース
-│           └── login_with_google.go     # Googleログインユースケース
+├── cmd/
+│   └── server/
+│       └── main.go
 │
-├── adapter/
-│   └── controller/
-│       └── auth/
-│           └── google_oauth_controller.go  # OAuth 2.0ハンドラー
-│
-└── infrastructure/
-    ├── persistence/
-    │   ├── user_command_repository.go
-    │   └── session_repository.go
-    ├── oauth/
-    │   └── google_oauth_client.go    # Google OAuth 2.0クライアント
-    └── jwt/
-        └── jwt_service.go            # JWT生成サービス
+└── sqlc.yaml                            # sqlc設定
 ```
 
 
@@ -88,51 +121,59 @@ import (
 
 // User集約ルート
 type User struct {
-    id              UserID
-    email           Email
-    passwordHash    *HashedPassword  // ソーシャルログインの場合はnil
-    googleID        *GoogleID        // Googleログインの場合のみ設定
-    name            string
-    profileImage    string
-    bio             string
-    isActive        bool
-    emailVerifiedAt *time.Time
-    lastLoginAt     *time.Time
-    createdAt       time.Time
-    updatedAt       time.Time
+    id                   UserID
+    firebaseUID          FirebaseUID
+    email                Email
+    emailVerified        bool
+    displayName          string
+    photoURL             string
+    phoneNumber          string
+    providerID           string
+    firebaseCreatedAt    *time.Time
+    firebaseLastSignInAt *time.Time
+    bio                  string
+    isActive             bool
+    emailVerifiedAt      *time.Time
+    lastLoginAt          *time.Time
+    createdAt            time.Time
+    updatedAt            time.Time
 }
 
-// NewUserWithGoogle - Googleアカウントから新規ユーザーを作成
-func NewUserWithGoogle(
+// NewUserWithFirebase - Firebaseアカウントから新規ユーザーを作成
+func NewUserWithFirebase(
+    firebaseUID FirebaseUID,
     email Email,
-    googleID GoogleID,
-    name string,
-    profileImage string,
+    emailVerified bool,
+    displayName string,
+    photoURL string,
+    phoneNumber string,
+    providerID string,
+    firebaseCreatedAt *time.Time,
+    firebaseLastSignInAt *time.Time,
 ) (*User, error) {
     now := time.Now().UTC()
     
-    return &User{
-        id:              NewUserID(),
-        email:           email,
-        passwordHash:    nil,  // ソーシャルログインはパスワード不要
-        googleID:        &googleID,
-        name:            name,
-        profileImage:    profileImage,
-        isActive:        true,
-        emailVerifiedAt: &now,  // Googleで検証済み
-        createdAt:       now,
-        updatedAt:       now,
-    }, nil
-}
-
-// LinkGoogleAccount - 既存ユーザーにGoogleアカウントをリンク
-func (u *User) LinkGoogleAccount(googleID GoogleID) error {
-    if u.googleID != nil {
-        return ErrGoogleAccountAlreadyLinked
+    var emailVerifiedAt *time.Time
+    if emailVerified {
+        emailVerifiedAt = &now
     }
-    u.googleID = &googleID
-    u.updatedAt = time.Now().UTC()
-    return nil
+    
+    return &User{
+        id:                   NewUserID(),
+        firebaseUID:          firebaseUID,
+        email:                email,
+        emailVerified:        emailVerified,
+        displayName:          displayName,
+        photoURL:             photoURL,
+        phoneNumber:          phoneNumber,
+        providerID:           providerID,
+        firebaseCreatedAt:    firebaseCreatedAt,
+        firebaseLastSignInAt: firebaseLastSignInAt,
+        isActive:             true,
+        emailVerifiedAt:      emailVerifiedAt,
+        createdAt:            now,
+        updatedAt:            now,
+    }, nil
 }
 
 // UpdateLastLogin - 最終ログイン日時を更新
@@ -142,20 +183,41 @@ func (u *User) UpdateLastLogin() {
     u.updatedAt = now
 }
 
+// UpdateFirebaseInfo - Firebase情報を更新
+func (u *User) UpdateFirebaseInfo(
+    displayName string,
+    photoURL string,
+    phoneNumber string,
+    firebaseLastSignInAt *time.Time,
+) {
+    u.displayName = displayName
+    u.photoURL = photoURL
+    u.phoneNumber = phoneNumber
+    u.firebaseLastSignInAt = firebaseLastSignInAt
+    u.updatedAt = time.Now().UTC()
+}
+
 // Getters
-func (u *User) ID() UserID { return u.id }
-func (u *User) Email() Email { return u.email }
-func (u *User) GoogleID() *GoogleID { return u.googleID }
-func (u *User) Name() string { return u.name }
-func (u *User) ProfileImage() string { return u.profileImage }
-func (u *User) IsActive() bool { return u.isActive }
-func (u *User) EmailVerifiedAt() *time.Time { return u.emailVerifiedAt }
+func (u *User) ID() UserID                       { return u.id }
+func (u *User) FirebaseUID() FirebaseUID         { return u.firebaseUID }
+func (u *User) Email() Email                     { return u.email }
+func (u *User) EmailVerified() bool              { return u.emailVerified }
+func (u *User) DisplayName() string              { return u.displayName }
+func (u *User) PhotoURL() string                 { return u.photoURL }
+func (u *User) PhoneNumber() string              { return u.phoneNumber }
+func (u *User) ProviderID() string               { return u.providerID }
+func (u *User) FirebaseCreatedAt() *time.Time    { return u.firebaseCreatedAt }
+func (u *User) FirebaseLastSignInAt() *time.Time { return u.firebaseLastSignInAt }
+func (u *User) IsActive() bool                   { return u.isActive }
+func (u *User) LastLoginAt() *time.Time          { return u.lastLoginAt }
+func (u *User) CreatedAt() time.Time             { return u.createdAt }
+func (u *User) UpdatedAt() time.Time             { return u.updatedAt }
 ```
 
-#### GoogleID値オブジェクト
+#### FirebaseUID値オブジェクト
 
 ```go
-// domain/model/user/google_id.go
+// domain/model/user/firebase_uid.go
 package user
 
 import (
@@ -163,32 +225,83 @@ import (
 )
 
 var (
-    ErrInvalidGoogleID = errors.New("invalid google id")
+    ErrInvalidFirebaseUID = errors.New("invalid firebase uid")
 )
 
-// GoogleID - GoogleのユーザーID（sub）を表す値オブジェクト
-type GoogleID struct {
+// FirebaseUID - Firebase UIDを表す値オブジェクト
+type FirebaseUID struct {
     value string
 }
 
-// NewGoogleID - GoogleIDを生成
-func NewGoogleID(value string) (GoogleID, error) {
+// NewFirebaseUID - FirebaseUIDを生成
+func NewFirebaseUID(value string) (FirebaseUID, error) {
     if value == "" {
-        return GoogleID{}, ErrInvalidGoogleID
+        return FirebaseUID{}, ErrInvalidFirebaseUID
     }
-    // Googleのsubは数値文字列（例: "1234567890"）
-    if len(value) < 1 || len(value) > 255 {
-        return GoogleID{}, ErrInvalidGoogleID
+    if len(value) > 128 {
+        return FirebaseUID{}, ErrInvalidFirebaseUID
     }
-    return GoogleID{value: value}, nil
+    return FirebaseUID{value: value}, nil
 }
 
-func (g GoogleID) String() string {
-    return g.value
+func (f FirebaseUID) String() string {
+    return f.value
 }
 
-func (g GoogleID) Equals(other GoogleID) bool {
-    return g.value == other.value
+func (f FirebaseUID) Equals(other FirebaseUID) bool {
+    return f.value == other.value
+}
+```
+
+#### UserID値オブジェクト
+
+```go
+// domain/model/user/user_id.go
+package user
+
+import (
+    "github.com/google/uuid"
+)
+
+// UserID - ユーザーIDを表す値オブジェクト（UUID v7）
+type UserID struct {
+    value uuid.UUID
+}
+
+// NewUserID - 新しいUserIDを生成（UUID v7）
+func NewUserID() UserID {
+    return UserID{value: uuid.Must(uuid.NewV7())}
+}
+
+// NewUserIDFromString - 文字列からUserIDを生成
+func NewUserIDFromString(s string) (UserID, error) {
+    id, err := uuid.Parse(s)
+    if err != nil {
+        return UserID{}, err
+    }
+    return UserID{value: id}, nil
+}
+
+// NewUserIDFromBytes - バイト列からUserIDを生成
+func NewUserIDFromBytes(b []byte) (UserID, error) {
+    id, err := uuid.FromBytes(b)
+    if err != nil {
+        return UserID{}, err
+    }
+    return UserID{value: id}, nil
+}
+
+func (u UserID) String() string {
+    return u.value.String()
+}
+
+func (u UserID) Bytes() []byte {
+    b, _ := u.value.MarshalBinary()
+    return b
+}
+
+func (u UserID) Equals(other UserID) bool {
+    return u.value == other.value
 }
 ```
 
@@ -213,23 +326,24 @@ type UserCommandRepository interface {
     // FindByEmail - メールアドレスでユーザーを取得
     FindByEmail(ctx context.Context, email user.Email) (*user.User, error)
     
-    // FindByGoogleID - GoogleIDでユーザーを取得
-    FindByGoogleID(ctx context.Context, googleID user.GoogleID) (*user.User, error)
+    // FindByFirebaseUID - Firebase UIDでユーザーを取得
+    FindByFirebaseUID(ctx context.Context, firebaseUID user.FirebaseUID) (*user.User, error)
 }
 ```
 
 
 ### UseCase層の設計
 
-#### RegisterUserWithGoogleユースケース
+#### RegisterUserWithFirebaseユースケース
 
 ```go
-// usecase/user/command/register_with_google.go
+// usecase/user/command/register_with_firebase.go
 package command
 
 import (
     "context"
     "errors"
+    "time"
     "github.com/yourusername/manager/internal/domain/model/user"
     "github.com/yourusername/manager/internal/domain/repository"
 )
@@ -238,40 +352,46 @@ var (
     ErrUserAlreadyExists = errors.New("user already exists")
 )
 
-// RegisterUserWithGoogleInput - 入力DTO
-type RegisterUserWithGoogleInput struct {
-    GoogleID     string
-    Email        string
-    Name         string
-    ProfileImage string
+// RegisterUserWithFirebaseInput - 入力DTO
+type RegisterUserWithFirebaseInput struct {
+    FirebaseUID          string
+    Email                string
+    EmailVerified        bool
+    DisplayName          string
+    PhotoURL             string
+    PhoneNumber          string
+    ProviderID           string
+    FirebaseCreatedAt    *time.Time
+    FirebaseLastSignInAt *time.Time
 }
 
-// RegisterUserWithGoogleOutput - 出力DTO
-type RegisterUserWithGoogleOutput struct {
-    UserID string
-    Email  string
-    Name   string
+// RegisterUserWithFirebaseOutput - 出力DTO
+type RegisterUserWithFirebaseOutput struct {
+    UserID      string
+    FirebaseUID string
+    Email       string
+    DisplayName string
 }
 
-// RegisterUserWithGoogleUseCase - Googleアカウントでユーザー登録
-type RegisterUserWithGoogleUseCase struct {
+// RegisterUserWithFirebaseUseCase - Firebaseアカウントでユーザー登録
+type RegisterUserWithFirebaseUseCase struct {
     userRepo repository.UserCommandRepository
 }
 
-func NewRegisterUserWithGoogleUseCase(
+func NewRegisterUserWithFirebaseUseCase(
     userRepo repository.UserCommandRepository,
-) *RegisterUserWithGoogleUseCase {
-    return &RegisterUserWithGoogleUseCase{
+) *RegisterUserWithFirebaseUseCase {
+    return &RegisterUserWithFirebaseUseCase{
         userRepo: userRepo,
     }
 }
 
-func (uc *RegisterUserWithGoogleUseCase) Execute(
+func (uc *RegisterUserWithFirebaseUseCase) Execute(
     ctx context.Context,
-    input RegisterUserWithGoogleInput,
-) (*RegisterUserWithGoogleOutput, error) {
+    input RegisterUserWithFirebaseInput,
+) (*RegisterUserWithFirebaseOutput, error) {
     // 値オブジェクトの生成
-    googleID, err := user.NewGoogleID(input.GoogleID)
+    firebaseUID, err := user.NewFirebaseUID(input.FirebaseUID)
     if err != nil {
         return nil, err
     }
@@ -281,32 +401,32 @@ func (uc *RegisterUserWithGoogleUseCase) Execute(
         return nil, err
     }
     
-    // GoogleIDで既存ユーザーを検索
-    existingUser, err := uc.userRepo.FindByGoogleID(ctx, googleID)
+    // Firebase UIDで既存ユーザーを検索
+    existingUser, err := uc.userRepo.FindByFirebaseUID(ctx, firebaseUID)
     if err == nil && existingUser != nil {
         return nil, ErrUserAlreadyExists
     }
     
-    // メールアドレスで既存ユーザーを検索
+    // メールアドレスで既存ユーザーを検索（別の認証方法で登録済みの可能性）
     existingUserByEmail, err := uc.userRepo.FindByEmail(ctx, email)
     if err == nil && existingUserByEmail != nil {
-        // 既存ユーザーにGoogleアカウントをリンク
-        if err := existingUserByEmail.LinkGoogleAccount(googleID); err != nil {
-            return nil, err
-        }
-        if err := uc.userRepo.Save(ctx, existingUserByEmail); err != nil {
-            return nil, err
-        }
-        
-        return &RegisterUserWithGoogleOutput{
-            UserID: existingUserByEmail.ID().String(),
-            Email:  existingUserByEmail.Email().String(),
-            Name:   existingUserByEmail.Name(),
-        }, nil
+        // 既存ユーザーにFirebase UIDを紐付ける（将来の拡張用）
+        // 現在はFirebase認証のみなので、この分岐は発生しない想定
+        return nil, ErrUserAlreadyExists
     }
     
     // 新規ユーザーを作成
-    newUser, err := user.NewUserWithGoogle(email, googleID, input.Name, input.ProfileImage)
+    newUser, err := user.NewUserWithFirebase(
+        firebaseUID,
+        email,
+        input.EmailVerified,
+        input.DisplayName,
+        input.PhotoURL,
+        input.PhoneNumber,
+        input.ProviderID,
+        input.FirebaseCreatedAt,
+        input.FirebaseLastSignInAt,
+    )
     if err != nil {
         return nil, err
     }
@@ -316,23 +436,25 @@ func (uc *RegisterUserWithGoogleUseCase) Execute(
         return nil, err
     }
     
-    return &RegisterUserWithGoogleOutput{
-        UserID: newUser.ID().String(),
-        Email:  newUser.Email().String(),
-        Name:   newUser.Name(),
+    return &RegisterUserWithFirebaseOutput{
+        UserID:      newUser.ID().String(),
+        FirebaseUID: newUser.FirebaseUID().String(),
+        Email:       newUser.Email().String(),
+        DisplayName: newUser.DisplayName(),
     }, nil
 }
 ```
 
-#### LoginWithGoogleユースケース
+#### LoginWithFirebaseユースケース
 
 ```go
-// usecase/user/command/login_with_google.go
+// usecase/user/command/login_with_firebase.go
 package command
 
 import (
     "context"
     "errors"
+    "time"
     "github.com/yourusername/manager/internal/domain/model/user"
     "github.com/yourusername/manager/internal/domain/repository"
 )
@@ -341,455 +463,461 @@ var (
     ErrUserNotFound = errors.New("user not found")
 )
 
-// LoginWithGoogleInput - 入力DTO
-type LoginWithGoogleInput struct {
-    GoogleID string
+// LoginWithFirebaseInput - 入力DTO
+type LoginWithFirebaseInput struct {
+    FirebaseUID          string
+    DisplayName          string
+    PhotoURL             string
+    PhoneNumber          string
+    FirebaseLastSignInAt *time.Time
 }
 
-// LoginWithGoogleOutput - 出力DTO
-type LoginWithGoogleOutput struct {
-    UserID string
-    Email  string
-    Name   string
+// LoginWithFirebaseOutput - 出力DTO
+type LoginWithFirebaseOutput struct {
+    UserID      string
+    FirebaseUID string
+    Email       string
+    DisplayName string
 }
 
-// LoginWithGoogleUseCase - Googleアカウントでログイン
-type LoginWithGoogleUseCase struct {
+// LoginWithFirebaseUseCase - Firebaseアカウントでログイン
+type LoginWithFirebaseUseCase struct {
     userRepo repository.UserCommandRepository
 }
 
-func NewLoginWithGoogleUseCase(
+func NewLoginWithFirebaseUseCase(
     userRepo repository.UserCommandRepository,
-) *LoginWithGoogleUseCase {
-    return &LoginWithGoogleUseCase{
+) *LoginWithFirebaseUseCase {
+    return &LoginWithFirebaseUseCase{
         userRepo: userRepo,
     }
 }
 
-func (uc *LoginWithGoogleUseCase) Execute(
+func (uc *LoginWithFirebaseUseCase) Execute(
     ctx context.Context,
-    input LoginWithGoogleInput,
-) (*LoginWithGoogleOutput, error) {
+    input LoginWithFirebaseInput,
+) (*LoginWithFirebaseOutput, error) {
     // 値オブジェクトの生成
-    googleID, err := user.NewGoogleID(input.GoogleID)
+    firebaseUID, err := user.NewFirebaseUID(input.FirebaseUID)
     if err != nil {
         return nil, err
     }
     
-    // GoogleIDでユーザーを検索
-    existingUser, err := uc.userRepo.FindByGoogleID(ctx, googleID)
+    // Firebase UIDでユーザーを検索
+    existingUser, err := uc.userRepo.FindByFirebaseUID(ctx, firebaseUID)
     if err != nil {
         return nil, ErrUserNotFound
     }
     
+    // Firebase情報を更新
+    existingUser.UpdateFirebaseInfo(
+        input.DisplayName,
+        input.PhotoURL,
+        input.PhoneNumber,
+        input.FirebaseLastSignInAt,
+    )
+    
     // 最終ログイン日時を更新
     existingUser.UpdateLastLogin()
+    
+    // ユーザーを保存
     if err := uc.userRepo.Save(ctx, existingUser); err != nil {
         return nil, err
     }
     
-    return &LoginWithGoogleOutput{
-        UserID: existingUser.ID().String(),
-        Email:  existingUser.Email().String(),
-        Name:   existingUser.Name(),
+    return &LoginWithFirebaseOutput{
+        UserID:      existingUser.ID().String(),
+        FirebaseUID: existingUser.FirebaseUID().String(),
+        Email:       existingUser.Email().String(),
+        DisplayName: existingUser.DisplayName(),
     }, nil
-}
-```
-
-
-### Adapter層の設計
-
-#### GoogleOAuthController
-
-```go
-// adapter/controller/auth/google_oauth_controller.go
-package auth
-
-import (
-    "context"
-    "net/http"
-    "github.com/labstack/echo/v4"
-    "github.com/yourusername/manager/internal/infrastructure/oauth"
-    "github.com/yourusername/manager/internal/infrastructure/jwt"
-    "github.com/yourusername/manager/internal/usecase/user/command"
-)
-
-type GoogleOAuthController struct {
-    googleClient     *oauth.GoogleOAuthClient
-    registerUseCase  *command.RegisterUserWithGoogleUseCase
-    loginUseCase     *command.LoginWithGoogleUseCase
-    jwtService       *jwt.JWTService
-    sessionRepo      SessionRepository
-}
-
-func NewGoogleOAuthController(
-    googleClient *oauth.GoogleOAuthClient,
-    registerUseCase *command.RegisterUserWithGoogleUseCase,
-    loginUseCase *command.LoginWithGoogleUseCase,
-    jwtService *jwt.JWTService,
-    sessionRepo SessionRepository,
-) *GoogleOAuthController {
-    return &GoogleOAuthController{
-        googleClient:    googleClient,
-        registerUseCase: registerUseCase,
-        loginUseCase:    loginUseCase,
-        jwtService:      jwtService,
-        sessionRepo:     sessionRepo,
-    }
-}
-
-// HandleGoogleLogin - Google認証フローを開始
-func (c *GoogleOAuthController) HandleGoogleLogin(ctx echo.Context) error {
-    // stateパラメータを生成（CSRF対策）
-    state, err := generateRandomState()
-    if err != nil {
-        return ctx.JSON(http.StatusInternalServerError, ErrorResponse{
-            RequestID: getRequestID(ctx),
-            Code:      "INTERNAL_ERROR",
-        })
-    }
-    
-    // stateをセッションに保存（有効期限10分）
-    if err := c.sessionRepo.SaveState(ctx.Request().Context(), state, 10*time.Minute); err != nil {
-        return ctx.JSON(http.StatusInternalServerError, ErrorResponse{
-            RequestID: getRequestID(ctx),
-            Code:      "INTERNAL_ERROR",
-        })
-    }
-    
-    // Google認証URLを生成
-    authURL := c.googleClient.GetAuthURL(state)
-    
-    // Google認証ページにリダイレクト
-    return ctx.Redirect(http.StatusTemporaryRedirect, authURL)
-}
-
-// HandleGoogleCallback - Googleからのコールバックを処理
-func (c *GoogleOAuthController) HandleGoogleCallback(ctx echo.Context) error {
-    // クエリパラメータを取得
-    code := ctx.QueryParam("code")
-    state := ctx.QueryParam("state")
-    errorParam := ctx.QueryParam("error")
-    
-    // エラーチェック
-    if errorParam != "" {
-        return ctx.Redirect(http.StatusTemporaryRedirect, 
-            "/login?error=google_auth_cancelled")
-    }
-    
-    // stateパラメータを検証
-    valid, err := c.sessionRepo.ValidateState(ctx.Request().Context(), state)
-    if err != nil || !valid {
-        return ctx.JSON(http.StatusBadRequest, ErrorResponse{
-            RequestID: getRequestID(ctx),
-            Code:      "INVALID_STATE",
-        })
-    }
-    
-    // 認証コードをトークンに交換
-    token, err := c.googleClient.ExchangeCode(ctx.Request().Context(), code)
-    if err != nil {
-        return ctx.JSON(http.StatusInternalServerError, ErrorResponse{
-            RequestID: getRequestID(ctx),
-            Code:      "TOKEN_EXCHANGE_FAILED",
-        })
-    }
-    
-    // IDトークンを検証してユーザー情報を取得
-    userInfo, err := c.googleClient.VerifyIDToken(ctx.Request().Context(), token.IDToken)
-    if err != nil {
-        return ctx.JSON(http.StatusUnauthorized, ErrorResponse{
-            RequestID: getRequestID(ctx),
-            Code:      "INVALID_ID_TOKEN",
-        })
-    }
-    
-    // 既存ユーザーをチェック
-    loginOutput, err := c.loginUseCase.Execute(ctx.Request().Context(), command.LoginWithGoogleInput{
-        GoogleID: userInfo.Sub,
-    })
-    
-    if err == command.ErrUserNotFound {
-        // 新規ユーザー登録
-        registerOutput, err := c.registerUseCase.Execute(ctx.Request().Context(), 
-            command.RegisterUserWithGoogleInput{
-                GoogleID:     userInfo.Sub,
-                Email:        userInfo.Email,
-                Name:         userInfo.Name,
-                ProfileImage: userInfo.Picture,
-            })
-        if err != nil {
-            return ctx.JSON(http.StatusInternalServerError, ErrorResponse{
-                RequestID: getRequestID(ctx),
-                Code:      "REGISTRATION_FAILED",
-            })
-        }
-        
-        // JWTトークンを生成
-        jwtToken, err := c.jwtService.GenerateToken(registerOutput.UserID, registerOutput.Email)
-        if err != nil {
-            return ctx.JSON(http.StatusInternalServerError, ErrorResponse{
-                RequestID: getRequestID(ctx),
-                Code:      "TOKEN_GENERATION_FAILED",
-            })
-        }
-        
-        // ダッシュボードにリダイレクト（トークンをクエリパラメータで渡す）
-        return ctx.Redirect(http.StatusTemporaryRedirect, 
-            "/dashboard?token="+jwtToken+"&message=registration_success")
-    }
-    
-    if err != nil {
-        return ctx.JSON(http.StatusInternalServerError, ErrorResponse{
-            RequestID: getRequestID(ctx),
-            Code:      "LOGIN_FAILED",
-        })
-    }
-    
-    // JWTトークンを生成
-    jwtToken, err := c.jwtService.GenerateToken(loginOutput.UserID, loginOutput.Email)
-    if err != nil {
-        return ctx.JSON(http.StatusInternalServerError, ErrorResponse{
-            RequestID: getRequestID(ctx),
-            Code:      "TOKEN_GENERATION_FAILED",
-        })
-    }
-    
-    // ダッシュボードにリダイレクト
-    return ctx.Redirect(http.StatusTemporaryRedirect, 
-        "/dashboard?token="+jwtToken+"&message=login_success")
 }
 ```
 
 
 ### Infrastructure層の設計
 
-#### GoogleOAuthClient
+#### Firebase Admin SDK Client
 
 ```go
-// infrastructure/oauth/google_oauth_client.go
-package oauth
+// infrastructure/firebase/firebase_client.go
+package firebase
 
 import (
     "context"
-    "encoding/json"
-    "errors"
     "fmt"
-    "golang.org/x/oauth2"
-    "golang.org/x/oauth2/google"
-    "google.golang.org/api/idtoken"
+    
+    firebase "firebase.google.com/go/v4"
+    "firebase.google.com/go/v4/auth"
+    "google.golang.org/api/option"
 )
 
-var (
-    ErrInvalidIDToken = errors.New("invalid id token")
-)
-
-// GoogleUserInfo - Googleから取得したユーザー情報
-type GoogleUserInfo struct {
-    Sub     string `json:"sub"`      // GoogleユーザーID
-    Email   string `json:"email"`    // メールアドレス
-    Name    string `json:"name"`     // 名前
-    Picture string `json:"picture"`  // プロフィール画像URL
+// FirebaseClient - Firebase Admin SDKクライアント
+type FirebaseClient struct {
+    authClient *auth.Client
 }
 
-// GoogleOAuthClient - Google OAuth 2.0クライアント
-type GoogleOAuthClient struct {
-    config *oauth2.Config
-}
-
-// NewGoogleOAuthClient - GoogleOAuthClientを生成
-func NewGoogleOAuthClient(clientID, clientSecret, redirectURL string) *GoogleOAuthClient {
-    config := &oauth2.Config{
-        ClientID:     clientID,
-        ClientSecret: clientSecret,
-        RedirectURL:  redirectURL,
-        Scopes: []string{
-            "openid",
-            "https://www.googleapis.com/auth/userinfo.email",
-            "https://www.googleapis.com/auth/userinfo.profile",
-        },
-        Endpoint: google.Endpoint,
+// NewFirebaseClient - FirebaseClientを生成
+func NewFirebaseClient(ctx context.Context, credentialsPath string) (*FirebaseClient, error) {
+    opt := option.WithCredentialsFile(credentialsPath)
+    app, err := firebase.NewApp(ctx, nil, opt)
+    if err != nil {
+        return nil, fmt.Errorf("failed to initialize firebase app: %w", err)
     }
     
-    return &GoogleOAuthClient{
-        config: config,
-    }
-}
-
-// GetAuthURL - Google認証URLを生成
-func (c *GoogleOAuthClient) GetAuthURL(state string) string {
-    return c.config.AuthCodeURL(state, oauth2.AccessTypeOffline)
-}
-
-// ExchangeCode - 認証コードをトークンに交換
-func (c *GoogleOAuthClient) ExchangeCode(ctx context.Context, code string) (*oauth2.Token, error) {
-    token, err := c.config.Exchange(ctx, code)
+    authClient, err := app.Auth(ctx)
     if err != nil {
-        return nil, fmt.Errorf("failed to exchange code: %w", err)
+        return nil, fmt.Errorf("failed to get auth client: %w", err)
+    }
+    
+    return &FirebaseClient{
+        authClient: authClient,
+    }, nil
+}
+
+// VerifyIDToken - Firebase IDトークンを検証
+func (c *FirebaseClient) VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error) {
+    token, err := c.authClient.VerifyIDToken(ctx, idToken)
+    if err != nil {
+        return nil, fmt.Errorf("failed to verify id token: %w", err)
     }
     return token, nil
 }
 
-// VerifyIDToken - IDトークンを検証してユーザー情報を取得
-func (c *GoogleOAuthClient) VerifyIDToken(ctx context.Context, idToken string) (*GoogleUserInfo, error) {
-    // IDトークンを検証
-    payload, err := idtoken.Validate(ctx, idToken, c.config.ClientID)
+// GetUser - Firebase UIDからユーザー情報を取得
+func (c *FirebaseClient) GetUser(ctx context.Context, uid string) (*auth.UserRecord, error) {
+    user, err := c.authClient.GetUser(ctx, uid)
     if err != nil {
-        return nil, fmt.Errorf("failed to validate id token: %w", err)
+        return nil, fmt.Errorf("failed to get user: %w", err)
     }
-    
-    // ユーザー情報を抽出
-    userInfo := &GoogleUserInfo{
-        Sub:     payload.Subject,
-        Email:   payload.Claims["email"].(string),
-        Name:    payload.Claims["name"].(string),
-        Picture: payload.Claims["picture"].(string),
-    }
-    
-    return userInfo, nil
+    return user, nil
 }
 ```
 
-#### JWTService
+#### 認証ミドルウェア
 
 ```go
-// infrastructure/jwt/jwt_service.go
-package jwt
-
-import (
-    "errors"
-    "time"
-    "github.com/golang-jwt/jwt/v5"
-)
-
-var (
-    ErrInvalidToken = errors.New("invalid token")
-)
-
-// Claims - JWTクレーム
-type Claims struct {
-    UserID string `json:"user_id"`
-    Email  string `json:"email"`
-    jwt.RegisteredClaims
-}
-
-// JWTService - JWT生成・検証サービス
-type JWTService struct {
-    secretKey []byte
-    issuer    string
-}
-
-// NewJWTService - JWTServiceを生成
-func NewJWTService(secretKey, issuer string) *JWTService {
-    return &JWTService{
-        secretKey: []byte(secretKey),
-        issuer:    issuer,
-    }
-}
-
-// GenerateToken - JWTトークンを生成
-func (s *JWTService) GenerateToken(userID, email string) (string, error) {
-    now := time.Now()
-    claims := Claims{
-        UserID: userID,
-        Email:  email,
-        RegisteredClaims: jwt.RegisteredClaims{
-            Issuer:    s.issuer,
-            IssuedAt:  jwt.NewNumericDate(now),
-            ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
-        },
-    }
-    
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    tokenString, err := token.SignedString(s.secretKey)
-    if err != nil {
-        return "", err
-    }
-    
-    return tokenString, nil
-}
-
-// ValidateToken - JWTトークンを検証
-func (s *JWTService) ValidateToken(tokenString string) (*Claims, error) {
-    token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-        return s.secretKey, nil
-    })
-    
-    if err != nil {
-        return nil, err
-    }
-    
-    if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-        return claims, nil
-    }
-    
-    return nil, ErrInvalidToken
-}
-```
-
-#### SessionRepository
-
-```go
-// infrastructure/persistence/session_repository.go
-package persistence
+// infrastructure/middleware/firebase_auth_middleware.go
+package middleware
 
 import (
     "context"
-    "crypto/rand"
-    "encoding/base64"
-    "time"
+    "net/http"
+    "strings"
+    
+    "github.com/labstack/echo/v4"
+    "github.com/yourusername/manager/internal/infrastructure/firebase"
 )
 
-// SessionRepository - セッション管理リポジトリ
-type SessionRepository interface {
-    SaveState(ctx context.Context, state string, ttl time.Duration) error
-    ValidateState(ctx context.Context, state string) (bool, error)
-    DeleteState(ctx context.Context, state string) error
+type contextKey string
+
+const (
+    FirebaseUIDKey contextKey = "firebase_uid"
+    UserIDKey      contextKey = "user_id"
+)
+
+// FirebaseAuthMiddleware - Firebase認証ミドルウェア
+type FirebaseAuthMiddleware struct {
+    firebaseClient *firebase.FirebaseClient
 }
 
-// InMemorySessionRepository - インメモリセッションリポジトリ（開発用）
-type InMemorySessionRepository struct {
-    states map[string]time.Time
-}
-
-func NewInMemorySessionRepository() *InMemorySessionRepository {
-    return &InMemorySessionRepository{
-        states: make(map[string]time.Time),
+func NewFirebaseAuthMiddleware(firebaseClient *firebase.FirebaseClient) *FirebaseAuthMiddleware {
+    return &FirebaseAuthMiddleware{
+        firebaseClient: firebaseClient,
     }
 }
 
-func (r *InMemorySessionRepository) SaveState(ctx context.Context, state string, ttl time.Duration) error {
-    r.states[state] = time.Now().Add(ttl)
-    return nil
+// Authenticate - 認証ミドルウェア
+func (m *FirebaseAuthMiddleware) Authenticate(next echo.HandlerFunc) echo.HandlerFunc {
+    return func(c echo.Context) error {
+        // Authorizationヘッダーからトークンを取得
+        authHeader := c.Request().Header.Get("Authorization")
+        if authHeader == "" {
+            return echo.NewHTTPError(http.StatusUnauthorized, "missing authorization header")
+        }
+        
+        // Bearer トークンを抽出
+        parts := strings.Split(authHeader, " ")
+        if len(parts) != 2 || parts[0] != "Bearer" {
+            return echo.NewHTTPError(http.StatusUnauthorized, "invalid authorization header format")
+        }
+        
+        idToken := parts[1]
+        
+        // Firebase IDトークンを検証
+        token, err := m.firebaseClient.VerifyIDToken(c.Request().Context(), idToken)
+        if err != nil {
+            return echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
+        }
+        
+        // コンテキストにFirebase UIDを設定
+        ctx := context.WithValue(c.Request().Context(), FirebaseUIDKey, token.UID)
+        c.SetRequest(c.Request().WithContext(ctx))
+        
+        return next(c)
+    }
 }
 
-func (r *InMemorySessionRepository) ValidateState(ctx context.Context, state string) (bool, error) {
-    expiry, exists := r.states[state]
-    if !exists {
-        return false, nil
+// GetFirebaseUID - コンテキストからFirebase UIDを取得
+func GetFirebaseUID(ctx context.Context) (string, bool) {
+    uid, ok := ctx.Value(FirebaseUIDKey).(string)
+    return uid, ok
+}
+```
+
+
+### Adapter層の設計
+
+#### FirebaseAuthController
+
+```go
+// adapter/controller/auth/firebase_auth_controller.go
+package auth
+
+import (
+    "log/slog"
+    "net/http"
+    "time"
+    
+    "github.com/labstack/echo/v4"
+    "github.com/yourusername/manager/internal/infrastructure/firebase"
+    "github.com/yourusername/manager/internal/usecase/user/command"
+)
+
+// RegisterRequest - 登録リクエスト
+type RegisterRequest struct {
+    DisplayName string `json:"displayName"`
+    PhotoURL    string `json:"photoURL"`
+    PhoneNumber string `json:"phoneNumber"`
+}
+
+// RegisterResponse - 登録レスポンス
+type RegisterResponse struct {
+    UserID      string `json:"userId"`
+    FirebaseUID string `json:"firebaseUid"`
+    Email       string `json:"email"`
+    DisplayName string `json:"displayName"`
+}
+
+// ErrorResponse - エラーレスポンス
+type ErrorResponse struct {
+    RequestID string        `json:"requestId"`
+    Code      string        `json:"code,omitempty"`
+    Details   []ErrorDetail `json:"details,omitempty"`
+}
+
+type ErrorDetail struct {
+    Field string `json:"field"`
+    Code  string `json:"code"`
+}
+
+// FirebaseAuthController - Firebase認証コントローラー
+type FirebaseAuthController struct {
+    firebaseClient  *firebase.FirebaseClient
+    registerUseCase *command.RegisterUserWithFirebaseUseCase
+    loginUseCase    *command.LoginWithFirebaseUseCase
+}
+
+func NewFirebaseAuthController(
+    firebaseClient *firebase.FirebaseClient,
+    registerUseCase *command.RegisterUserWithFirebaseUseCase,
+    loginUseCase *command.LoginWithFirebaseUseCase,
+) *FirebaseAuthController {
+    return &FirebaseAuthController{
+        firebaseClient:  firebaseClient,
+        registerUseCase: registerUseCase,
+        loginUseCase:    loginUseCase,
+    }
+}
+
+// Register - ユーザー登録
+func (ctrl *FirebaseAuthController) Register(c echo.Context) error {
+    ctx := c.Request().Context()
+    requestID := c.Response().Header().Get(echo.HeaderXRequestID)
+    
+    // Authorizationヘッダーからトークンを取得
+    idToken, err := extractBearerToken(c)
+    if err != nil {
+        slog.ErrorContext(ctx, "failed to extract token", "error", err, "request_id", requestID)
+        return c.JSON(http.StatusUnauthorized, ErrorResponse{
+            RequestID: requestID,
+            Code:      "INVALID_TOKEN",
+        })
     }
     
-    if time.Now().After(expiry) {
-        delete(r.states, state)
-        return false, nil
+    // Firebase IDトークンを検証
+    token, err := ctrl.firebaseClient.VerifyIDToken(ctx, idToken)
+    if err != nil {
+        slog.ErrorContext(ctx, "failed to verify token", "error", err, "request_id", requestID)
+        return c.JSON(http.StatusUnauthorized, ErrorResponse{
+            RequestID: requestID,
+            Code:      "INVALID_TOKEN",
+        })
     }
     
-    delete(r.states, state)  // 使用済みstateを削除
-    return true, nil
-}
-
-func (r *InMemorySessionRepository) DeleteState(ctx context.Context, state string) error {
-    delete(r.states, state)
-    return nil
-}
-
-// generateRandomState - ランダムなstateパラメータを生成
-func generateRandomState() (string, error) {
-    b := make([]byte, 32)
-    if _, err := rand.Read(b); err != nil {
-        return "", err
+    // Firebase UIDからユーザー情報を取得
+    firebaseUser, err := ctrl.firebaseClient.GetUser(ctx, token.UID)
+    if err != nil {
+        slog.ErrorContext(ctx, "failed to get firebase user", "error", err, "request_id", requestID)
+        return c.JSON(http.StatusInternalServerError, ErrorResponse{
+            RequestID: requestID,
+            Code:      "INTERNAL_ERROR",
+        })
     }
-    return base64.URLEncoding.EncodeToString(b), nil
+    
+    // ユーザー登録ユースケースを実行
+    var firebaseCreatedAt, firebaseLastSignInAt *time.Time
+    if firebaseUser.UserMetadata != nil {
+        if !firebaseUser.UserMetadata.CreationTimestamp.IsZero() {
+            t := firebaseUser.UserMetadata.CreationTimestamp.UTC()
+            firebaseCreatedAt = &t
+        }
+        if !firebaseUser.UserMetadata.LastLogInTimestamp.IsZero() {
+            t := firebaseUser.UserMetadata.LastLogInTimestamp.UTC()
+            firebaseLastSignInAt = &t
+        }
+    }
+    
+    providerID := ""
+    if len(firebaseUser.ProviderUserInfo) > 0 {
+        providerID = firebaseUser.ProviderUserInfo[0].ProviderID
+    }
+    
+    output, err := ctrl.registerUseCase.Execute(ctx, command.RegisterUserWithFirebaseInput{
+        FirebaseUID:          token.UID,
+        Email:                firebaseUser.Email,
+        EmailVerified:        firebaseUser.EmailVerified,
+        DisplayName:          firebaseUser.DisplayName,
+        PhotoURL:             firebaseUser.PhotoURL,
+        PhoneNumber:          firebaseUser.PhoneNumber,
+        ProviderID:           providerID,
+        FirebaseCreatedAt:    firebaseCreatedAt,
+        FirebaseLastSignInAt: firebaseLastSignInAt,
+    })
+    
+    if err != nil {
+        if err == command.ErrUserAlreadyExists {
+            slog.WarnContext(ctx, "user already exists", "firebase_uid", token.UID, "request_id", requestID)
+            return c.JSON(http.StatusConflict, ErrorResponse{
+                RequestID: requestID,
+                Code:      "USER_ALREADY_EXISTS",
+            })
+        }
+        slog.ErrorContext(ctx, "failed to register user", "error", err, "request_id", requestID)
+        return c.JSON(http.StatusInternalServerError, ErrorResponse{
+            RequestID: requestID,
+            Code:      "REGISTRATION_FAILED",
+        })
+    }
+    
+    slog.InfoContext(ctx, "user registered", 
+        "user_id", output.UserID,
+        "firebase_uid", output.FirebaseUID,
+        "email", output.Email,
+        "request_id", requestID,
+    )
+    
+    return c.JSON(http.StatusCreated, RegisterResponse{
+        UserID:      output.UserID,
+        FirebaseUID: output.FirebaseUID,
+        Email:       output.Email,
+        DisplayName: output.DisplayName,
+    })
+}
+
+// Login - ログイン
+func (ctrl *FirebaseAuthController) Login(c echo.Context) error {
+    ctx := c.Request().Context()
+    requestID := c.Response().Header().Get(echo.HeaderXRequestID)
+    
+    // Authorizationヘッダーからトークンを取得
+    idToken, err := extractBearerToken(c)
+    if err != nil {
+        slog.ErrorContext(ctx, "failed to extract token", "error", err, "request_id", requestID)
+        return c.JSON(http.StatusUnauthorized, ErrorResponse{
+            RequestID: requestID,
+            Code:      "INVALID_TOKEN",
+        })
+    }
+    
+    // Firebase IDトークンを検証
+    token, err := ctrl.firebaseClient.VerifyIDToken(ctx, idToken)
+    if err != nil {
+        slog.ErrorContext(ctx, "failed to verify token", "error", err, "request_id", requestID)
+        return c.JSON(http.StatusUnauthorized, ErrorResponse{
+            RequestID: requestID,
+            Code:      "INVALID_TOKEN",
+        })
+    }
+    
+    // Firebase UIDからユーザー情報を取得
+    firebaseUser, err := ctrl.firebaseClient.GetUser(ctx, token.UID)
+    if err != nil {
+        slog.ErrorContext(ctx, "failed to get firebase user", "error", err, "request_id", requestID)
+        return c.JSON(http.StatusInternalServerError, ErrorResponse{
+            RequestID: requestID,
+            Code:      "INTERNAL_ERROR",
+        })
+    }
+    
+    // ログインユースケースを実行
+    var firebaseLastSignInAt *time.Time
+    if firebaseUser.UserMetadata != nil && !firebaseUser.UserMetadata.LastLogInTimestamp.IsZero() {
+        t := firebaseUser.UserMetadata.LastLogInTimestamp.UTC()
+        firebaseLastSignInAt = &t
+    }
+    
+    output, err := ctrl.loginUseCase.Execute(ctx, command.LoginWithFirebaseInput{
+        FirebaseUID:          token.UID,
+        DisplayName:          firebaseUser.DisplayName,
+        PhotoURL:             firebaseUser.PhotoURL,
+        PhoneNumber:          firebaseUser.PhoneNumber,
+        FirebaseLastSignInAt: firebaseLastSignInAt,
+    })
+    
+    if err != nil {
+        if err == command.ErrUserNotFound {
+            slog.WarnContext(ctx, "user not found", "firebase_uid", token.UID, "request_id", requestID)
+            return c.JSON(http.StatusNotFound, ErrorResponse{
+                RequestID: requestID,
+                Code:      "USER_NOT_FOUND",
+            })
+        }
+        slog.ErrorContext(ctx, "failed to login", "error", err, "request_id", requestID)
+        return c.JSON(http.StatusInternalServerError, ErrorResponse{
+            RequestID: requestID,
+            Code:      "LOGIN_FAILED",
+        })
+    }
+    
+    slog.InfoContext(ctx, "user logged in",
+        "user_id", output.UserID,
+        "firebase_uid", output.FirebaseUID,
+        "email", output.Email,
+        "request_id", requestID,
+    )
+    
+    return c.JSON(http.StatusOK, RegisterResponse{
+        UserID:      output.UserID,
+        FirebaseUID: output.FirebaseUID,
+        Email:       output.Email,
+        DisplayName: output.DisplayName,
+    })
+}
+
+// extractBearerToken - Authorizationヘッダーからトークンを抽出
+func extractBearerToken(c echo.Context) (string, error) {
+    authHeader := c.Request().Header.Get("Authorization")
+    if authHeader == "" {
+        return "", echo.NewHTTPError(http.StatusUnauthorized, "missing authorization header")
+    }
+    
+    parts := strings.Split(authHeader, " ")
+    if len(parts) != 2 || parts[0] != "Bearer" {
+        return "", echo.NewHTTPError(http.StatusUnauthorized, "invalid authorization header format")
+    }
+    
+    return parts[1], nil
 }
 ```
 
@@ -801,24 +929,29 @@ func generateRandomState() (string, error) {
 ```sql
 -- schema/users.sql
 CREATE TABLE users (
-    id BINARY(16) PRIMARY KEY COMMENT 'ユーザーID（UUID v7）',
-    email VARCHAR(255) NOT NULL COMMENT 'メールアドレス',
-    password_hash VARCHAR(255) COMMENT 'パスワードハッシュ（ソーシャルログインの場合はNULL）',
-    google_id VARCHAR(255) UNIQUE COMMENT 'GoogleユーザーID（sub）',
-    name VARCHAR(100) COMMENT 'ユーザー名',
-    profile_image VARCHAR(500) COMMENT 'プロフィール画像URL',
-    bio TEXT COMMENT '自己紹介',
+    id BINARY(16) PRIMARY KEY COMMENT 'UUID v7（アプリケーション内部ID）',
+    firebase_uid VARCHAR(128) NOT NULL UNIQUE COMMENT 'Firebase UID',
+    email VARCHAR(255) NOT NULL UNIQUE COMMENT 'メールアドレス',
+    email_verified TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'メール確認済みフラグ（Firebaseから取得）',
+    display_name VARCHAR(255) COMMENT '表示名（Firebaseから取得）',
+    photo_url VARCHAR(500) COMMENT 'プロフィール画像URL（Firebaseから取得）',
+    phone_number VARCHAR(50) COMMENT '電話番号（Firebaseから取得、オプション）',
+    provider_id VARCHAR(50) NOT NULL COMMENT '認証プロバイダーID（例: google.com）',
+    firebase_created_at DATETIME(6) COMMENT 'Firebase上のアカウント作成日時',
+    firebase_last_sign_in_at DATETIME(6) COMMENT 'Firebase上の最終サインイン日時',
+    bio TEXT COMMENT '自己紹介（アプリケーション独自項目）',
     is_active TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'アクティブ状態',
-    email_verified_at DATETIME(6) COMMENT 'メール確認日時',
-    last_login_at DATETIME(6) COMMENT '最終ログイン日時',
+    email_verified_at DATETIME(6) COMMENT 'メール確認日時（アプリケーション側で管理）',
+    last_login_at DATETIME(6) COMMENT '最終ログイン日時（アプリケーション側で管理）',
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '作成日時',
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新日時',
-    deleted_at DATETIME(6) COMMENT '削除日時',
+    deleted_at DATETIME(6) COMMENT '削除日時（論理削除用）',
     
     UNIQUE KEY uq_users_email (email),
-    UNIQUE KEY uq_users_google_id (google_id),
-    INDEX idx_users_deleted_at (deleted_at),
-    INDEX idx_users_created_at (created_at)
+    UNIQUE KEY uq_users_firebase_uid (firebase_uid),
+    INDEX idx_users_firebase_uid (firebase_uid),
+    INDEX idx_users_provider_id (provider_id),
+    INDEX idx_users_deleted_at (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ユーザー情報';
 ```
 
@@ -827,37 +960,51 @@ CREATE TABLE users (
 ```sql
 -- query/user_command.sql
 
--- name: CreateUserWithGoogle :execresult
+-- name: CreateUserWithFirebase :execresult
 INSERT INTO users (
     id,
+    firebase_uid,
     email,
-    google_id,
-    name,
-    profile_image,
+    email_verified,
+    display_name,
+    photo_url,
+    phone_number,
+    provider_id,
+    firebase_created_at,
+    firebase_last_sign_in_at,
     email_verified_at,
     is_active,
     created_at,
     updated_at
 ) VALUES (
     sqlc.arg('id'),
+    sqlc.arg('firebase_uid'),
     sqlc.arg('email'),
-    sqlc.arg('google_id'),
-    sqlc.arg('name'),
-    sqlc.arg('profile_image'),
+    sqlc.arg('email_verified'),
+    sqlc.arg('display_name'),
+    sqlc.arg('photo_url'),
+    sqlc.arg('phone_number'),
+    sqlc.arg('provider_id'),
+    sqlc.arg('firebase_created_at'),
+    sqlc.arg('firebase_last_sign_in_at'),
     sqlc.arg('email_verified_at'),
     sqlc.arg('is_active'),
     sqlc.arg('created_at'),
     sqlc.arg('updated_at')
 );
 
--- name: GetUserByGoogleID :one
+-- name: GetUserByFirebaseUID :one
 SELECT 
     id,
+    firebase_uid,
     email,
-    password_hash,
-    google_id,
-    name,
-    profile_image,
+    email_verified,
+    display_name,
+    photo_url,
+    phone_number,
+    provider_id,
+    firebase_created_at,
+    firebase_last_sign_in_at,
     bio,
     is_active,
     email_verified_at,
@@ -866,12 +1013,37 @@ SELECT
     updated_at,
     deleted_at
 FROM users
-WHERE google_id = sqlc.arg('google_id') AND deleted_at IS NULL;
+WHERE firebase_uid = sqlc.arg('firebase_uid') AND deleted_at IS NULL;
 
--- name: UpdateUserGoogleID :exec
+-- name: GetUserByEmail :one
+SELECT 
+    id,
+    firebase_uid,
+    email,
+    email_verified,
+    display_name,
+    photo_url,
+    phone_number,
+    provider_id,
+    firebase_created_at,
+    firebase_last_sign_in_at,
+    bio,
+    is_active,
+    email_verified_at,
+    last_login_at,
+    created_at,
+    updated_at,
+    deleted_at
+FROM users
+WHERE email = sqlc.arg('email') AND deleted_at IS NULL;
+
+-- name: UpdateUserFirebaseInfo :exec
 UPDATE users
 SET
-    google_id = sqlc.arg('google_id'),
+    display_name = sqlc.arg('display_name'),
+    photo_url = sqlc.arg('photo_url'),
+    phone_number = sqlc.arg('phone_number'),
+    firebase_last_sign_in_at = sqlc.arg('firebase_last_sign_in_at'),
     updated_at = sqlc.arg('updated_at')
 WHERE id = sqlc.arg('id') AND deleted_at IS NULL;
 
@@ -883,172 +1055,324 @@ SET
 WHERE id = sqlc.arg('id') AND deleted_at IS NULL;
 ```
 
-#### リポジトリ実装
+#### sqlc設定
 
-```go
-// infrastructure/persistence/user_command_repository.go
-package persistence
-
-import (
-    "context"
-    "database/sql"
-    "fmt"
-    "github.com/yourusername/manager/internal/domain/model/user"
-    "github.com/yourusername/manager/internal/infrastructure/persistence/sqlc"
-)
-
-type userCommandRepository struct {
-    db *sql.DB
-}
-
-func NewUserCommandRepository(db *sql.DB) *userCommandRepository {
-    return &userCommandRepository{db: db}
-}
-
-func (r *userCommandRepository) Save(ctx context.Context, u *user.User) error {
-    queries := sqlc.New(r.db)
-    
-    // 既存ユーザーをチェック
-    existing, err := queries.GetUserByID(ctx, u.ID().Bytes())
-    if err != nil && err != sql.ErrNoRows {
-        return fmt.Errorf("failed to check existing user: %w", err)
-    }
-    
-    if existing.ID != nil {
-        // 更新
-        return r.update(ctx, queries, u)
-    }
-    
-    // 新規作成
-    return r.create(ctx, queries, u)
-}
-
-func (r *userCommandRepository) create(ctx context.Context, queries *sqlc.Queries, u *user.User) error {
-    var googleID sql.NullString
-    if u.GoogleID() != nil {
-        googleID = sql.NullString{String: u.GoogleID().String(), Valid: true}
-    }
-    
-    var emailVerifiedAt sql.NullTime
-    if u.EmailVerifiedAt() != nil {
-        emailVerifiedAt = sql.NullTime{Time: *u.EmailVerifiedAt(), Valid: true}
-    }
-    
-    _, err := queries.CreateUserWithGoogle(ctx, sqlc.CreateUserWithGoogleParams{
-        ID:              u.ID().Bytes(),
-        Email:           u.Email().String(),
-        GoogleID:        googleID,
-        Name:            u.Name(),
-        ProfileImage:    u.ProfileImage(),
-        EmailVerifiedAt: emailVerifiedAt,
-        IsActive:        boolToTinyInt(u.IsActive()),
-        CreatedAt:       u.CreatedAt(),
-        UpdatedAt:       u.UpdatedAt(),
-    })
-    
-    if err != nil {
-        return fmt.Errorf("failed to create user: %w", err)
-    }
-    
-    return nil
-}
-
-func (r *userCommandRepository) FindByGoogleID(ctx context.Context, googleID user.GoogleID) (*user.User, error) {
-    queries := sqlc.New(r.db)
-    
-    row, err := queries.GetUserByGoogleID(ctx, sql.NullString{
-        String: googleID.String(),
-        Valid:  true,
-    })
-    if err == sql.ErrNoRows {
-        return nil, nil
-    }
-    if err != nil {
-        return nil, fmt.Errorf("failed to get user by google id: %w", err)
-    }
-    
-    return r.toUserModel(row)
-}
-
-func (r *userCommandRepository) toUserModel(row sqlc.User) (*user.User, error) {
-    // sqlcの結果からドメインモデルに変換
-    // 実装の詳細は省略
-    return nil, nil
-}
-
-func boolToTinyInt(b bool) int8 {
-    if b {
-        return 1
-    }
-    return 0
-}
+```yaml
+# sqlc.yaml
+version: "2"
+sql:
+  - engine: "mysql"
+    queries: "internal/infrastructure/persistence/query"
+    schema: "internal/infrastructure/persistence/schema"
+    gen:
+      go:
+        package: "sqlc"
+        out: "internal/infrastructure/persistence/sqlc"
+        sql_package: "database/sql"
+        emit_json_tags: true
+        emit_interface: true
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
 ```
-
 
 ## フロントエンド設計
 
-### コンポーネント構成
+### ディレクトリ構造
 
 ```
-src/
-├── pages/
-│   ├── auth/
-│   │   ├── LoginPage.tsx              # ログインページ
-│   │   ├── RegisterPage.tsx           # 登録ページ
-│   │   └── GoogleCallbackPage.tsx     # Googleコールバックページ
-│   └── DashboardPage.tsx
-│
-├── components/
-│   └── features/
+services/manager/frontend/
+├── src/
+│   ├── pages/
+│   │   └── auth/
+│   │       ├── LoginPage.tsx
+│   │       └── RegisterPage.tsx
+│   │
+│   ├── components/
+│   │   ├── ui/                      # shadcn/ui
+│   │   └── features/
+│   │       └── auth/
+│   │           └── GoogleLoginButton.tsx
+│   │
+│   ├── hooks/
+│   │   └── auth/
+│   │       ├── useFirebaseAuth.ts
+│   │       └── useRegisterWithFirebase.ts
+│   │
+│   ├── stores/
+│   │   └── authStore.ts             # Jotai atoms
+│   │
+│   ├── api/
+│   │   ├── client.ts                # TanStack Query設定
+│   │   └── generated/               # OpenAPI Generator出力
+│   │
+│   ├── lib/
+│   │   └── firebase.ts              # Firebase初期化
+│   │
+│   └── routes/                      # TanStack Router
+│       ├── __root.tsx
+│       ├── index.tsx
 │       └── auth/
-│           ├── GoogleLoginButton.tsx  # Googleログインボタン
-│           └── AuthCallback.tsx       # 認証コールバック処理
+│           ├── login.tsx
+│           └── register.tsx
 │
-├── hooks/
-│   └── api/
-│       └── useGoogleAuth.ts           # Google認証Hook
-│
-├── stores/
-│   └── authStore.ts                   # 認証状態管理
-│
-└── api/
-    └── endpoints/
-        └── authApi.ts                 # 認証API
+└── firebase.json                    # Firebase設定
 ```
 
-### Presentation層
 
-#### GoogleLoginButton
+### Firebase初期化
+
+```typescript
+// lib/firebase.ts
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
+
+// Firebase初期化
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+```
+
+### 認証Hook
+
+```typescript
+// hooks/auth/useFirebaseAuth.ts
+import { useState } from 'react';
+import { signInWithPopup, User } from 'firebase/auth';
+import { auth, googleProvider } from '@/lib/firebase';
+
+export const useFirebaseAuth = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const signInWithGoogle = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      // IDトークンを取得
+      const idToken = await user.getIdToken();
+      
+      return { user, idToken };
+    } catch (err) {
+      setError(err as Error);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await auth.signOut();
+    } catch (err) {
+      setError(err as Error);
+      throw err;
+    }
+  };
+
+  return {
+    signInWithGoogle,
+    signOut,
+    isLoading,
+    error,
+  };
+};
+```
+
+```typescript
+// hooks/auth/useRegisterWithFirebase.ts
+import { useMutation } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
+
+type RegisterRequest = {
+  idToken: string;
+};
+
+type RegisterResponse = {
+  userId: string;
+  firebaseUid: string;
+  email: string;
+  displayName: string;
+};
+
+export const useRegisterWithFirebase = () => {
+  return useMutation({
+    mutationFn: async ({ idToken }: RegisterRequest) => {
+      const response = await apiClient.post<RegisterResponse>(
+        '/techcv/api/v1/auth/firebase/register',
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
+      return response.data;
+    },
+  });
+};
+
+export const useLoginWithFirebase = () => {
+  return useMutation({
+    mutationFn: async ({ idToken }: RegisterRequest) => {
+      const response = await apiClient.post<RegisterResponse>(
+        '/techcv/api/v1/auth/firebase/login',
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
+      return response.data;
+    },
+  });
+};
+```
+
+### 状態管理
+
+```typescript
+// stores/authStore.ts
+import { atom } from 'jotai';
+import { User } from 'firebase/auth';
+
+export type AppUser = {
+  userId: string;
+  firebaseUid: string;
+  email: string;
+  displayName: string;
+};
+
+// Firebase認証状態（Firebase SDKが管理）
+export const firebaseUserAtom = atom<User | null>(null);
+
+// アプリケーション固有のユーザー情報
+export const appUserAtom = atom<AppUser | null>(null);
+
+// 認証状態
+export const isAuthenticatedAtom = atom((get) => {
+  const firebaseUser = get(firebaseUserAtom);
+  const appUser = get(appUserAtom);
+  return firebaseUser !== null && appUser !== null;
+});
+
+// ログイン処理
+export const loginAtom = atom(
+  null,
+  (get, set, { firebaseUser, appUser }: { firebaseUser: User; appUser: AppUser }) => {
+    set(firebaseUserAtom, firebaseUser);
+    set(appUserAtom, appUser);
+  }
+);
+
+// ログアウト処理
+export const logoutAtom = atom(null, (get, set) => {
+  set(firebaseUserAtom, null);
+  set(appUserAtom, null);
+});
+```
+
+### コンポーネント
 
 ```typescript
 // components/features/auth/GoogleLoginButton.tsx
 import { Button } from '@/components/ui/button';
-import { useGoogleLogin } from '@/hooks/api/useGoogleAuth';
+import { useFirebaseAuth } from '@/hooks/auth/useFirebaseAuth';
+import { useRegisterWithFirebase, useLoginWithFirebase } from '@/hooks/auth/useRegisterWithFirebase';
+import { useSetAtom } from 'jotai';
+import { loginAtom } from '@/stores/authStore';
+import { useNavigate } from '@tanstack/react-router';
+import { toast } from 'sonner';
 
 export const GoogleLoginButton = () => {
-  const { initiateLogin, isLoading } = useGoogleLogin();
+  const { signInWithGoogle, isLoading: isSigningIn } = useFirebaseAuth();
+  const { mutateAsync: register, isPending: isRegistering } = useRegisterWithFirebase();
+  const { mutateAsync: login, isPending: isLoggingIn } = useLoginWithFirebase();
+  const setLogin = useSetAtom(loginAtom);
+  const navigate = useNavigate();
 
-  const handleClick = () => {
-    initiateLogin();
+  const isLoading = isSigningIn || isRegistering || isLoggingIn;
+
+  const handleGoogleLogin = async () => {
+    try {
+      // Firebase認証
+      const { user, idToken } = await signInWithGoogle();
+
+      // バックエンドにユーザー登録を試みる
+      try {
+        const appUser = await register({ idToken });
+        
+        // 状態を更新
+        setLogin({ firebaseUser: user, appUser });
+        
+        // ダッシュボードにリダイレクト
+        navigate({ to: '/dashboard' });
+        toast.success('登録が完了しました');
+      } catch (registerError: any) {
+        // ユーザーが既に存在する場合はログイン
+        if (registerError.response?.status === 409) {
+          const appUser = await login({ idToken });
+          
+          // 状態を更新
+          setLogin({ firebaseUser: user, appUser });
+          
+          // ダッシュボードにリダイレクト
+          navigate({ to: '/dashboard' });
+          toast.success('ログインしました');
+        } else {
+          throw registerError;
+        }
+      }
+    } catch (error) {
+      console.error('Google login failed:', error);
+      toast.error('ログインに失敗しました');
+    }
   };
 
   return (
     <Button
-      onClick={handleClick}
+      onClick={handleGoogleLogin}
       disabled={isLoading}
       variant="outline"
       className="w-full"
     >
       <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
         {/* Google icon SVG */}
+        <path
+          fill="currentColor"
+          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        />
+        <path
+          fill="currentColor"
+          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        />
+        <path
+          fill="currentColor"
+          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+        />
+        <path
+          fill="currentColor"
+          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+        />
       </svg>
-      Googleでログイン
+      {isLoading ? 'ログイン中...' : 'Googleでログイン'}
     </Button>
   );
 };
 ```
-
-#### LoginPage
 
 ```typescript
 // pages/auth/LoginPage.tsx
@@ -1057,26 +1381,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export const LoginPage = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>ログイン</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">
+            ログイン
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <GoogleLoginButton />
-          
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                または
-              </span>
-            </div>
-          </div>
-          
-          {/* メールアドレス/パスワードログインフォーム */}
         </CardContent>
       </Card>
     </div>
@@ -1084,271 +1397,162 @@ export const LoginPage = () => {
 };
 ```
 
-#### GoogleCallbackPage
+### APIクライアント設定
 
 ```typescript
-// pages/auth/GoogleCallbackPage.tsx
-import { useEffect } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useAuthCallback } from '@/hooks/api/useGoogleAuth';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+// api/client.ts
+import axios from 'axios';
+import { auth } from '@/lib/firebase';
 
-export const GoogleCallbackPage = () => {
-  const navigate = useNavigate();
-  const search = useSearch({ from: '/auth/google/callback' });
-  const { handleCallback, isLoading, error } = useAuthCallback();
-
-  useEffect(() => {
-    const processCallback = async () => {
-      const token = search.token;
-      const message = search.message;
-      
-      if (token) {
-        // トークンを保存
-        localStorage.setItem('auth_token', token);
-        
-        // ダッシュボードにリダイレクト
-        navigate({ to: '/dashboard' });
-        
-        // 成功メッセージを表示
-        if (message === 'registration_success') {
-          toast.success('登録が完了しました');
-        } else if (message === 'login_success') {
-          toast.success('ログインしました');
-        }
-      } else if (search.error) {
-        // エラー処理
-        toast.error('認証に失敗しました');
-        navigate({ to: '/login' });
-      }
-    };
-    
-    processCallback();
-  }, [search, navigate]);
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-red-500">認証に失敗しました</p>
-      </div>
-    );
-  }
-
-  return null;
-};
-```
-
-### Application層
-
-#### useGoogleAuth Hook
-
-```typescript
-// hooks/api/useGoogleAuth.ts
-import { useState } from 'react';
-import { authApi } from '@/api/endpoints/authApi';
-
-export const useGoogleLogin = () => {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const initiateLogin = async () => {
-    setIsLoading(true);
-    try {
-      // バックエンドのGoogle認証エンドポイントにリダイレクト
-      window.location.href = `${import.meta.env.VITE_API_BASE_URL}/techcv/api/v1/auth/google/login`;
-    } catch (error) {
-      console.error('Failed to initiate Google login:', error);
-      setIsLoading(false);
-    }
-  };
-
-  return { initiateLogin, isLoading };
-};
-
-export const useAuthCallback = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  const handleCallback = async (token: string) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // トークンを検証（オプション）
-      // const user = await authApi.verifyToken(token);
-      
-      // 認証状態を更新
-      localStorage.setItem('auth_token', token);
-      
-      return true;
-    } catch (err) {
-      setError(err as Error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return { handleCallback, isLoading, error };
-};
-```
-
-### Infrastructure層
-
-#### authApi
-
-```typescript
-// api/endpoints/authApi.ts
-import { apiClient } from '@/api/client';
-
-export const authApi = {
-  // Google認証を開始（実際にはリダイレクトするだけ）
-  initiateGoogleLogin: () => {
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/techcv/api/v1/auth/google/login`;
-  },
-  
-  // トークンを検証
-  verifyToken: async (token: string) => {
-    return apiClient.get('auth/verify', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }).json();
-  },
-};
-```
-
-### 状態管理
-
-#### authStore
-
-```typescript
-// stores/authStore.ts
-import { atom } from 'jotai';
-import { atomWithStorage } from 'jotai/utils';
-
-export type User = {
-  id: string;
-  email: string;
-  name: string;
-  profileImage?: string;
-};
-
-// トークンをローカルストレージに保存
-export const authTokenAtom = atomWithStorage<string | null>('auth_token', null);
-
-// ユーザー情報
-export const userAtom = atom<User | null>(null);
-
-// 認証状態
-export const isAuthenticatedAtom = atom((get) => {
-  const token = get(authTokenAtom);
-  const user = get(userAtom);
-  return token !== null && user !== null;
+export const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  timeout: 30000,
 });
 
-// ログイン処理
-export const loginAtom = atom(
-  null,
-  (get, set, { token, user }: { token: string; user: User }) => {
-    set(authTokenAtom, token);
-    set(userAtom, user);
+// リクエストインターセプター：Firebase IDトークンを自動付与
+apiClient.interceptors.request.use(
+  async (config) => {
+    const user = auth.currentUser;
+    if (user) {
+      const idToken = await user.getIdToken();
+      config.headers.Authorization = `Bearer ${idToken}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
 );
 
-// ログアウト処理
-export const logoutAtom = atom(null, (get, set) => {
-  set(authTokenAtom, null);
-  set(userAtom, null);
-});
+// レスポンスインターセプター：401エラー時の処理
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      // ログアウト処理
+      await auth.signOut();
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 ```
 
+## 環境変数設定
 
-## API設計
+### バックエンド
 
-### OpenAPI定義
+```bash
+# .env.example
+
+# Firebase Admin SDK
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CREDENTIALS_PATH=/path/to/serviceAccountKey.json
+
+# Database
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=techcv_manager
+DB_USER=root
+DB_PASSWORD=password
+
+# Server
+SERVER_PORT=8080
+SERVER_ENV=development
+
+# Logging
+LOG_LEVEL=info
+```
+
+### フロントエンド
+
+```bash
+# .env.example
+
+# Firebase
+VITE_FIREBASE_API_KEY=your-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+VITE_FIREBASE_APP_ID=your-app-id
+
+# API
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+## OpenAPI定義
 
 ```yaml
 # spec/paths/auth.yaml
-/auth/google/login:
-  get:
-    summary: Google認証フローを開始
-    description: |
-      Google OAuth 2.0認証フローを開始します。
-      stateパラメータを生成してセッションに保存し、Googleの認証ページにリダイレクトします。
+/auth/firebase/register:
+  post:
+    summary: Firebase認証後のユーザー登録
     tags:
       - Authentication
+    security:
+      - BearerAuth: []
     responses:
-      '307':
-        description: Googleの認証ページにリダイレクト
-      '500':
-        description: 内部サーバーエラー
+      '201':
+        description: 登録成功
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ErrorResponse'
-
-/auth/google/callback:
-  get:
-    summary: Googleからのコールバックを処理
-    description: |
-      Google OAuth 2.0認証フローのコールバックを処理します。
-      認証コードをトークンに交換し、ユーザー情報を取得して登録またはログインを行います。
-    tags:
-      - Authentication
-    parameters:
-      - name: code
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Google認証コード
-      - name: state
-        in: query
-        required: true
-        schema:
-          type: string
-        description: CSRF対策用のstateパラメータ
-      - name: error
-        in: query
-        required: false
-        schema:
-          type: string
-        description: 認証エラー
-    responses:
-      '307':
-        description: ダッシュボードにリダイレクト
-      '400':
-        description: 不正なリクエスト
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ErrorResponse'
+              $ref: '#/components/schemas/RegisterResponse'
       '401':
-        description: 認証失敗
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ErrorResponse'
+        $ref: '#/components/responses/UnauthorizedError'
+      '409':
+        $ref: '#/components/responses/ConflictError'
       '500':
-        description: 内部サーバーエラー
+        $ref: '#/components/responses/InternalServerError'
+
+/auth/firebase/login:
+  post:
+    summary: Firebase認証後のログイン
+    tags:
+      - Authentication
+    security:
+      - BearerAuth: []
+    responses:
+      '200':
+        description: ログイン成功
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ErrorResponse'
+              $ref: '#/components/schemas/RegisterResponse'
+      '401':
+        $ref: '#/components/responses/UnauthorizedError'
+      '404':
+        $ref: '#/components/responses/NotFoundError'
+      '500':
+        $ref: '#/components/responses/InternalServerError'
 ```
-
-### エラーコード定義
 
 ```yaml
 # spec/components/schemas.yaml
+RegisterResponse:
+  type: object
+  required:
+    - userId
+    - firebaseUid
+    - email
+    - displayName
+  properties:
+    userId:
+      type: string
+      format: uuid
+      description: アプリケーション内部のユーザーID
+    firebaseUid:
+      type: string
+      description: Firebase UID
+    email:
+      type: string
+      format: email
+      description: メールアドレス
+    displayName:
+      type: string
+      description: 表示名
+
 ErrorResponse:
   type: object
   required:
@@ -1357,19 +1561,16 @@ ErrorResponse:
     requestId:
       type: string
       description: リクエストID
-      example: "88374925"
     code:
       type: string
       description: エラーコード
       enum:
-        - INTERNAL_ERROR
-        - INVALID_STATE
-        - TOKEN_EXCHANGE_FAILED
-        - INVALID_ID_TOKEN
+        - INVALID_TOKEN
+        - USER_ALREADY_EXISTS
+        - USER_NOT_FOUND
         - REGISTRATION_FAILED
         - LOGIN_FAILED
-        - TOKEN_GENERATION_FAILED
-      example: "INVALID_STATE"
+        - INTERNAL_ERROR
     details:
       type: array
       description: 詳細エラー情報
@@ -1382,485 +1583,43 @@ ErrorResponse:
             type: string
 ```
 
-## セキュリティ設計
-
-### CSRF対策
-
-1. **stateパラメータの使用**
-   - ランダムな32バイトの値を生成
-   - Base64エンコードして使用
-   - セッションまたはクッキーに保存（有効期限10分）
-   - コールバック時に検証し、一致しない場合はエラー
-
-2. **stateの管理方法**
-   - 開発環境: インメモリストア
-   - 本番環境: Redis等の外部ストア推奨
-
-### IDトークン検証
-
-1. **署名の検証**
-   - GoogleのJWKS（JSON Web Key Set）を使用
-   - `google.golang.org/api/idtoken`パッケージで自動検証
-
-2. **クレームの検証**
-   - `iss`: `https://accounts.google.com` または `accounts.google.com`
-   - `aud`: アプリケーションのClient ID
-   - `exp`: 有効期限が切れていないこと
-   - `iat`: 発行日時が妥当であること
-
-### トークン管理
-
-1. **JWTトークン**
-   - HS256アルゴリズムで署名
-   - 有効期限: 24時間
-   - クレーム: user_id, email, iat, exp
-
-2. **トークンの保存**
-   - フロントエンド: localStorage（XSS対策が必要）
-   - または: HttpOnly Cookie（CSRF対策が必要）
-
-### HTTPS通信
-
-- すべての通信はHTTPSで暗号化
-- 本番環境ではHTTPSを強制
-- リダイレクトURIもHTTPSを使用
-
-## エラーハンドリング
-
-### エラーシナリオと対応
-
-| シナリオ | エラーコード | HTTPステータス | ユーザーへのメッセージ |
-|---------|------------|--------------|-------------------|
-| stateパラメータ不一致 | INVALID_STATE | 400 | 認証に失敗しました。再度お試しください |
-| トークン交換失敗 | TOKEN_EXCHANGE_FAILED | 500 | 認証に失敗しました。再度お試しください |
-| IDトークン検証失敗 | INVALID_ID_TOKEN | 401 | 認証に失敗しました。再度お試しください |
-| ユーザー登録失敗 | REGISTRATION_FAILED | 500 | 登録処理中にエラーが発生しました |
-| ログイン失敗 | LOGIN_FAILED | 500 | ログイン処理中にエラーが発生しました |
-| JWT生成失敗 | TOKEN_GENERATION_FAILED | 500 | 認証トークンの生成に失敗しました |
-| Google認証キャンセル | - | 307 | Google認証がキャンセルされました |
-| ネットワークエラー | INTERNAL_ERROR | 500 | ネットワークエラーが発生しました |
-
-### ログ出力
-
-```go
-// エラーログの例
-{
-  "severity": "ERROR",
-  "request_id": "88374925",
-  "user_id": "01234567-89ab-cdef-0123-456789abcdef",
-  "message": "Failed to exchange authorization code",
-  "error": "oauth2: cannot fetch token: 400 Bad Request",
-  "timestamp": "2024-01-15T12:34:56.789Z"
-}
-
-// 情報ログの例
-{
-  "severity": "INFO",
-  "request_id": "88374925",
-  "user_id": "01234567-89ab-cdef-0123-456789abcdef",
-  "message": "User registered with Google",
-  "google_id": "1234567890",
-  "email": "user@example.com",
-  "timestamp": "2024-01-15T12:34:56.789Z"
-}
-```
-
-
-## 環境変数設定
-
-### バックエンド環境変数
-
-```bash
-# .env.example
-
-# Google OAuth 2.0設定
-GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-client-secret
-GOOGLE_REDIRECT_URL=http://localhost:8080/techcv/api/v1/auth/google/callback
-
-# JWT設定
-JWT_SECRET_KEY=your-secret-key-change-in-production
-JWT_ISSUER=techcv-manager
-
-# セッション設定（本番環境ではRedis等を使用）
-SESSION_STORE_TYPE=memory  # memory | redis
-REDIS_URL=redis://localhost:6379
-
-# データベース設定
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=techcv_manager
-DB_USER=root
-DB_PASSWORD=password
-
-# アプリケーション設定
-APP_ENV=development  # development | production
-APP_URL=http://localhost:3000
-API_BASE_URL=http://localhost:8080
-```
-
-### フロントエンド環境変数
-
-```bash
-# .env.example
-
-# API設定
-VITE_API_BASE_URL=http://localhost:8080
-
-# アプリケーション設定
-VITE_APP_URL=http://localhost:3000
-```
-
-## テスト戦略
-
-### 単体テスト
-
-#### Domain層のテスト
-
-```go
-// domain/model/user/user_test.go
-func TestNewUserWithGoogle(t *testing.T) {
-    tests := []struct {
-        name         string
-        email        string
-        googleID     string
-        userName     string
-        profileImage string
-        wantErr      bool
-    }{
-        {
-            name:         "正常なユーザー作成",
-            email:        "test@example.com",
-            googleID:     "1234567890",
-            userName:     "Test User",
-            profileImage: "https://example.com/image.jpg",
-            wantErr:      false,
-        },
-        {
-            name:         "不正なメールアドレス",
-            email:        "invalid-email",
-            googleID:     "1234567890",
-            userName:     "Test User",
-            profileImage: "",
-            wantErr:      true,
-        },
-    }
-    
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            email, _ := user.NewEmail(tt.email)
-            googleID, _ := user.NewGoogleID(tt.googleID)
-            
-            u, err := user.NewUserWithGoogle(email, googleID, tt.userName, tt.profileImage)
-            
-            if tt.wantErr {
-                assert.Error(t, err)
-                assert.Nil(t, u)
-            } else {
-                assert.NoError(t, err)
-                assert.NotNil(t, u)
-                assert.Equal(t, tt.email, u.Email().String())
-                assert.Equal(t, tt.googleID, u.GoogleID().String())
-                assert.NotNil(t, u.EmailVerifiedAt())
-            }
-        })
-    }
-}
-```
-
-#### UseCase層のテスト
-
-```go
-// usecase/user/command/register_with_google_test.go
-func TestRegisterUserWithGoogleUseCase_Execute(t *testing.T) {
-    // モックリポジトリを使用
-    mockRepo := &MockUserCommandRepository{}
-    useCase := NewRegisterUserWithGoogleUseCase(mockRepo)
-    
-    tests := []struct {
-        name    string
-        input   RegisterUserWithGoogleInput
-        setup   func()
-        wantErr bool
-    }{
-        {
-            name: "新規ユーザー登録成功",
-            input: RegisterUserWithGoogleInput{
-                GoogleID:     "1234567890",
-                Email:        "test@example.com",
-                Name:         "Test User",
-                ProfileImage: "https://example.com/image.jpg",
-            },
-            setup: func() {
-                mockRepo.On("FindByGoogleID", mock.Anything, mock.Anything).Return(nil, nil)
-                mockRepo.On("FindByEmail", mock.Anything, mock.Anything).Return(nil, nil)
-                mockRepo.On("Save", mock.Anything, mock.Anything).Return(nil)
-            },
-            wantErr: false,
-        },
-        {
-            name: "既存ユーザーにGoogleアカウントをリンク",
-            input: RegisterUserWithGoogleInput{
-                GoogleID:     "1234567890",
-                Email:        "existing@example.com",
-                Name:         "Existing User",
-                ProfileImage: "",
-            },
-            setup: func() {
-                existingUser := createTestUser()
-                mockRepo.On("FindByGoogleID", mock.Anything, mock.Anything).Return(nil, nil)
-                mockRepo.On("FindByEmail", mock.Anything, mock.Anything).Return(existingUser, nil)
-                mockRepo.On("Save", mock.Anything, mock.Anything).Return(nil)
-            },
-            wantErr: false,
-        },
-    }
-    
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            tt.setup()
-            
-            output, err := useCase.Execute(context.Background(), tt.input)
-            
-            if tt.wantErr {
-                assert.Error(t, err)
-                assert.Nil(t, output)
-            } else {
-                assert.NoError(t, err)
-                assert.NotNil(t, output)
-            }
-        })
-    }
-}
-```
-
-### 統合テスト
-
-#### APIエンドポイントのテスト
-
-```go
-// adapter/controller/auth/google_oauth_controller_test.go
-func TestGoogleOAuthController_HandleGoogleLogin(t *testing.T) {
-    // テスト用のEchoインスタンスを作成
-    e := echo.New()
-    req := httptest.NewRequest(http.MethodGet, "/auth/google/login", nil)
-    rec := httptest.NewRecorder()
-    c := e.NewContext(req, rec)
-    
-    // コントローラーを作成
-    controller := setupTestController()
-    
-    // テスト実行
-    err := controller.HandleGoogleLogin(c)
-    
-    // 検証
-    assert.NoError(t, err)
-    assert.Equal(t, http.StatusTemporaryRedirect, rec.Code)
-    assert.Contains(t, rec.Header().Get("Location"), "accounts.google.com")
-}
-
-func TestGoogleOAuthController_HandleGoogleCallback(t *testing.T) {
-    tests := []struct {
-        name           string
-        queryParams    map[string]string
-        mockSetup      func(*MockGoogleClient, *MockUseCase)
-        expectedStatus int
-        expectedRedirect string
-    }{
-        {
-            name: "新規ユーザー登録成功",
-            queryParams: map[string]string{
-                "code":  "test-code",
-                "state": "valid-state",
-            },
-            mockSetup: func(client *MockGoogleClient, uc *MockUseCase) {
-                client.On("ExchangeCode", mock.Anything, "test-code").Return(&oauth2.Token{}, nil)
-                client.On("VerifyIDToken", mock.Anything, mock.Anything).Return(&GoogleUserInfo{
-                    Sub:   "1234567890",
-                    Email: "test@example.com",
-                    Name:  "Test User",
-                }, nil)
-                uc.On("Execute", mock.Anything, mock.Anything).Return(&RegisterUserWithGoogleOutput{
-                    UserID: "user-id",
-                    Email:  "test@example.com",
-                }, nil)
-            },
-            expectedStatus: http.StatusTemporaryRedirect,
-            expectedRedirect: "/dashboard",
-        },
-    }
-    
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            // テスト実行
-            // ...
-        })
-    }
-}
-```
-
-### E2Eテスト（フロントエンド）
-
-```typescript
-// e2e/google-login.spec.ts
-import { test, expect } from '@playwright/test';
-
-test.describe('Google Login', () => {
-  test('should display Google login button', async ({ page }) => {
-    await page.goto('/login');
-    
-    const googleButton = page.getByRole('button', { name: /Googleでログイン/i });
-    await expect(googleButton).toBeVisible();
-  });
-  
-  test('should redirect to Google auth page when clicking button', async ({ page }) => {
-    await page.goto('/login');
-    
-    const googleButton = page.getByRole('button', { name: /Googleでログイン/i });
-    await googleButton.click();
-    
-    // Google認証ページにリダイレクトされることを確認
-    await expect(page).toHaveURL(/accounts\.google\.com/);
-  });
-  
-  // Note: 実際のGoogle認証フローのテストはモックを使用
-  test('should handle successful authentication', async ({ page, context }) => {
-    // モックのコールバックURLを設定
-    await page.goto('/auth/google/callback?token=mock-jwt-token&message=registration_success');
-    
-    // ダッシュボードにリダイレクトされることを確認
-    await expect(page).toHaveURL('/dashboard');
-    
-    // 成功メッセージが表示されることを確認
-    await expect(page.getByText('登録が完了しました')).toBeVisible();
-  });
-});
-```
-
-## デプロイメント
-
-### Google Cloud Console設定
-
-1. **OAuth 2.0クライアントIDの作成**
-   - Google Cloud Consoleにアクセス
-   - プロジェクトを選択または作成
-   - 「APIとサービス」→「認証情報」
-   - 「認証情報を作成」→「OAuth 2.0クライアントID」
-   - アプリケーションの種類: Webアプリケーション
-   - 承認済みのリダイレクトURIを追加:
-     - 開発: `http://localhost:8080/techcv/api/v1/auth/google/callback`
-     - 本番: `https://api.yourdomain.com/techcv/api/v1/auth/google/callback`
-
-2. **OAuth同意画面の設定**
-   - ユーザータイプ: 外部
-   - アプリ名、サポートメール、デベロッパーの連絡先情報を入力
-   - スコープを追加: `openid`, `email`, `profile`
-
-### 本番環境の考慮事項
-
-1. **セッション管理**
-   - Redisを使用してstateパラメータを管理
-   - 複数サーバー間でセッションを共有
-
-2. **HTTPS強制**
-   - すべてのエンドポイントでHTTPSを強制
-   - HSTSヘッダーを設定
-
-3. **レート制限**
-   - 認証エンドポイントにレート制限を設定
-   - 同一IPからの過度なリクエストを制限
-
-4. **監視とアラート**
-   - 認証失敗率を監視
-   - Google APIのエラー率を監視
-   - 異常なトラフィックを検知
-
-## パフォーマンス最適化
-
-### キャッシュ戦略
-
-1. **GoogleのJWKSキャッシュ**
-   - IDトークン検証用の公開鍵をキャッシュ
-   - TTL: 24時間
-
-2. **ユーザー情報キャッシュ**
-   - 頻繁にアクセスされるユーザー情報をキャッシュ
-   - Redis等を使用
-
-### データベース最適化
-
-1. **インデックス**
-   - `google_id`にユニークインデックス
-   - `email`にユニークインデックス
-   - 検索パフォーマンスを向上
-
-2. **コネクションプール**
-   - 適切なコネクションプール設定
-   - 最大接続数、アイドルタイムアウト等
-
-## 今後の拡張
-
-### 他のソーシャルログインの追加
-
-設計を拡張可能にするため、以下の構造を採用:
-
-```go
-// domain/model/user/social_provider.go
-type SocialProvider string
-
-const (
-    SocialProviderGoogle   SocialProvider = "google"
-    SocialProviderGitHub   SocialProvider = "github"
-    SocialProviderMicrosoft SocialProvider = "microsoft"
-)
-
-type SocialAccount struct {
-    provider SocialProvider
-    providerUserID string
-}
-```
-
-データベーススキーマも拡張:
-
-```sql
-CREATE TABLE user_social_accounts (
-    id BINARY(16) PRIMARY KEY,
-    user_id BINARY(16) NOT NULL,
-    provider VARCHAR(50) NOT NULL,
-    provider_user_id VARCHAR(255) NOT NULL,
-    created_at DATETIME(6) NOT NULL,
-    
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    UNIQUE KEY uq_provider_user (provider, provider_user_id)
-);
+```yaml
+# spec/components/security.yaml
+securitySchemes:
+  BearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
+    description: Firebase IDトークン
 ```
 
 ## まとめ
 
-本設計書では、Googleソーシャルログイン機能の詳細な設計を記述しました。
+本設計書では、Firebase Authenticationを使用したGoogleソーシャルログイン機能の詳細設計を記述しました。
 
 ### 主要な設計ポイント
 
-1. **Clean Architecture + DDD + CQRS**
+1. **Firebase Authenticationの活用**
+   - OAuth 2.0の複雑な実装を避け、Firebase SDKに委譲
+   - IDトークンの検証はFirebase Admin SDKで実施
+   - トークンのリフレッシュは自動
+
+2. **Clean Architecture + DDD + CQRS**
    - レイヤー分離による保守性の向上
    - ドメインモデルによるビジネスロジックの集約
    - コマンド側での集約の使用
 
-2. **セキュリティ**
-   - CSRF対策（stateパラメータ）
-   - IDトークン検証
-   - HTTPS通信の強制
+3. **技術スタックの統一**
+   - バックエンド: Golang 1.25 + Echo + sqlc + sqldef
+   - フロントエンド: React 18 + TypeScript + TanStack Router + Jotai
+   - 両方でFirebase SDKを使用
 
-3. **拡張性**
+4. **セキュリティ**
+   - Firebase IDトークンによる認証
+   - ミドルウェアでの自動検証
+   - 401エラー時の自動ログアウト
+
+5. **拡張性**
    - 他のソーシャルログインへの対応が容易
-   - メールアドレス/パスワード認証との併用
-
-4. **パフォーマンス**
-   - 適切なインデックス設計
-   - キャッシュ戦略
-   - コネクションプール
-
-5. **テスタビリティ**
-   - 各レイヤーの独立したテスト
-   - モックを使用した単体テスト
-   - E2Eテストによる統合検証
+   - provider_idで認証プロバイダーを識別
+   - データベーススキーマは変更不要
