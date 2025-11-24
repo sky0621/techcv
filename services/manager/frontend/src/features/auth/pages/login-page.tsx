@@ -1,5 +1,3 @@
-import { Link } from '@tanstack/react-router';
-
 import { Button } from '@/components/ui/button';
 import { appConfig } from '@/lib/env';
 
@@ -22,11 +20,7 @@ export const LoginPage = (): JSX.Element => {
           Googleでサインイン
         </Button>
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          メールアドレスでの登録は{' '}
-          <Link className="font-medium text-primary underline" to="/register">
-            こちら
-          </Link>
-          から行えます。
+          サインイン後にCVの作成・管理ができます。
         </p>
       </div>
     </div>

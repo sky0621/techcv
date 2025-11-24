@@ -40,8 +40,7 @@ gen-sqlc: ## Generate database access layer code with sqlc
 
 .PHONY: gen-api
 gen-api: ## Generate Go sources from OpenAPI specification
-	GOCACHE=$(CURDIR)/.cache go run ./cmd/openapi -spec ../openapi/openapi.yaml -out ./internal/interface/http/openapi/openapi.gen.go
-	rm -rf $(CURDIR)/.cache
+	go tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config ./oapi-codegen.yaml ../openapi/openapi.yaml
 
 # Formatting
 .PHONY: fmt

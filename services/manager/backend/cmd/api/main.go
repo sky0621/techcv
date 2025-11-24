@@ -11,12 +11,16 @@ import (
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 
+	"github.com/google/uuid"
+	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/clock"
 	appconfig "github.com/sky0621/techcv/manager/backend/internal/infrastructure/config"
+	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/firebase"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/logger"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/mysql"
 	"github.com/sky0621/techcv/manager/backend/internal/infrastructure/server"
 	handler "github.com/sky0621/techcv/manager/backend/internal/interface/http/handler"
 	httpmiddleware "github.com/sky0621/techcv/manager/backend/internal/interface/http/middleware"
+	"github.com/sky0621/techcv/manager/backend/internal/usecase/auth"
 	"github.com/sky0621/techcv/manager/backend/internal/usecase/health"
 )
 
@@ -29,7 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log := logger.New()
+	log := logger.New(cfg.App.Environment, cfg.App.LogLevel)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -54,6 +58,12 @@ func main() {
 		}
 	}()
 
+	firebaseAuth, err := firebase.NewAuthService(ctx, cfg.Firebase)
+	if err != nil {
+		log.Error("failed to initialize firebase auth", "error", err)
+		os.Exit(1)
+	}
+
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
@@ -68,10 +78,20 @@ func main() {
 
 	healthRepo := mysql.NewHealthRepository(db)
 	healthUsecase := health.New(healthRepo)
-	apiHandler := handler.NewHandler(healthUsecase)
+	userRepo := mysql.NewUserRepository(db)
+	systemClock := clock.NewSystemClock()
+	idGenerator := func() (string, error) {
+		uid, err := uuid.NewV7()
+		if err != nil {
+			return "", err
+		}
+		return uid.String(), nil
+	}
+	authUsecase := auth.New(firebaseAuth, userRepo, systemClock, idGenerator)
+	apiHandler := handler.NewHandler(healthUsecase, authUsecase)
 
 	apiGroup := e.Group("/techcv/api/v1")
-	apiHandler.Register(apiGroup)
+	apiHandler.Register(apiGroup, httpmiddleware.FirebaseAuth(firebaseAuth))
 
 	srv := server.New(e, log)
 

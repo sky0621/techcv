@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math"
 
 	"github.com/sky0621/techcv/manager/backend/internal/domain"
 	mysqlsqlc "github.com/sky0621/techcv/manager/backend/internal/infrastructure/mysql/sqlc"
@@ -81,10 +80,7 @@ func (r *PublicURLRepository) List(ctx context.Context) ([]domain.PublicURL, err
 
 // Deactivate marks the specified public URL as inactive.
 func (r *PublicURLRepository) Deactivate(ctx context.Context, id uint64) error {
-	if id > math.MaxInt64 {
-		return fmt.Errorf("public URL id %d exceeds max int64", id)
-	}
-	return r.queries.DeactivatePublicURL(ctx, int64(id))
+	return r.queries.DeactivatePublicURL(ctx, id)
 }
 
 func toDomainPublicURL(model mysqlsqlc.PublicUrl) (domain.PublicURL, error) {

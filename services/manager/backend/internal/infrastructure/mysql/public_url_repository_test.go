@@ -45,11 +45,6 @@ func TestPublicURLRepositoryGetActive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create sqlmock: %v", err)
 	}
-	defer func() {
-		if closeErr := db.Close(); closeErr != nil {
-			t.Fatalf("failed to close db: %v", closeErr)
-		}
-	}()
 
 	now := time.Now()
 	rows := sqlmock.
@@ -57,6 +52,7 @@ func TestPublicURLRepositoryGetActive(t *testing.T) {
 		AddRow(int64(1), "active-key", true, now, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(getActivePublicURLQuery)).WillReturnRows(rows)
+	mock.ExpectClose()
 
 	repo := NewPublicURLRepository(db)
 	result, err := repo.GetActive(context.Background())
@@ -66,6 +62,10 @@ func TestPublicURLRepositoryGetActive(t *testing.T) {
 
 	if result == nil || result.URLKey != "active-key" {
 		t.Fatalf("unexpected result: %+v", result)
+	}
+
+	if closeErr := db.Close(); closeErr != nil {
+		t.Fatalf("failed to close db: %v", closeErr)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -78,15 +78,11 @@ func TestPublicURLRepositoryCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create sqlmock: %v", err)
 	}
-	defer func() {
-		if closeErr := db.Close(); closeErr != nil {
-			t.Fatalf("failed to close db: %v", closeErr)
-		}
-	}()
 
 	mock.ExpectExec(regexp.QuoteMeta(createPublicURLQuery)).
 		WithArgs("new-key").
 		WillReturnResult(sqlmock.NewResult(10, 1))
+	mock.ExpectClose()
 
 	repo := NewPublicURLRepository(db)
 	id, err := repo.Create(context.Background(), "new-key")
@@ -96,6 +92,10 @@ func TestPublicURLRepositoryCreate(t *testing.T) {
 
 	if id != 10 {
 		t.Fatalf("unexpected id: got %d, want %d", id, 10)
+	}
+
+	if closeErr := db.Close(); closeErr != nil {
+		t.Fatalf("failed to close db: %v", closeErr)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -108,11 +108,6 @@ func TestPublicURLRepositoryList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create sqlmock: %v", err)
 	}
-	defer func() {
-		if closeErr := db.Close(); closeErr != nil {
-			t.Fatalf("failed to close db: %v", closeErr)
-		}
-	}()
 
 	now := time.Now()
 	rows := sqlmock.
@@ -121,6 +116,7 @@ func TestPublicURLRepositoryList(t *testing.T) {
 		AddRow(int64(2), "second", false, now, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listPublicURLsQuery)).WillReturnRows(rows)
+	mock.ExpectClose()
 
 	repo := NewPublicURLRepository(db)
 	results, err := repo.List(context.Background())
@@ -136,6 +132,10 @@ func TestPublicURLRepositoryList(t *testing.T) {
 		t.Fatalf("unexpected first result: %+v", results[0])
 	}
 
+	if closeErr := db.Close(); closeErr != nil {
+		t.Fatalf("failed to close db: %v", closeErr)
+	}
+
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet expectations: %v", err)
 	}
@@ -146,19 +146,19 @@ func TestPublicURLRepositoryDeactivate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create sqlmock: %v", err)
 	}
-	defer func() {
-		if closeErr := db.Close(); closeErr != nil {
-			t.Fatalf("failed to close db: %v", closeErr)
-		}
-	}()
 
 	mock.ExpectExec(regexp.QuoteMeta(deactivatePublicURLQuery)).
-		WithArgs(int64(5)).
+		WithArgs(uint64(5)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectClose()
 
 	repo := NewPublicURLRepository(db)
 	if err := repo.Deactivate(context.Background(), 5); err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if closeErr := db.Close(); closeErr != nil {
+		t.Fatalf("failed to close db: %v", closeErr)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {

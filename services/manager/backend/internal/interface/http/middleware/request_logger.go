@@ -21,6 +21,9 @@ func RequestLogger(log *slog.Logger) echo.MiddlewareFunc {
 		LogValuesFunc: func(c echo.Context, v echomiddleware.RequestLoggerValues) error {
 			requestID := c.Response().Header().Get(echo.HeaderXRequestID)
 			entry := logger.WithRequestID(log, requestID)
+			if uid, ok := FirebaseUIDFromContext(c); ok {
+				entry = entry.With("firebase_uid", uid)
+			}
 
 			if v.Error == nil {
 				entry.Info("request handled",

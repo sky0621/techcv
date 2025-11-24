@@ -30,7 +30,7 @@ func (h *ErrorHandler) Handle(err error, c echo.Context) {
 	}
 
 	status := http.StatusInternalServerError
-	code := "internal_error"
+	code := domain.ErrorCodeInternalError
 	message := http.StatusText(status)
 
 	var appErr *domain.AppError
@@ -67,6 +67,7 @@ func (h *ErrorHandler) Handle(err error, c echo.Context) {
 		slog.String("path", c.Path()),
 		slog.Int("status", status),
 		slog.String("code", code),
+		slog.String("message", message),
 		slog.Any("error", err),
 	)
 
@@ -81,7 +82,13 @@ func (h *ErrorHandler) Handle(err error, c echo.Context) {
 		}
 	}
 
-	if err := response.Failure(c, status, requestID, code, message, details); err != nil {
+	body := response.ErrorBody{
+		RequestID: requestID,
+		Code:      code,
+		Details:   details,
+	}
+
+	if err := response.Failure(c, status, body); err != nil {
 		log.Error("failed to send error response", slog.Any("error", err))
 	}
 }

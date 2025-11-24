@@ -3,8 +3,7 @@ info:
   title: Manager API
   version: 1.0.0
   description: |
-    OpenAPI specification for the Manager service. The API exposes health checking
-    endpoints for operational monitoring.
+    OpenAPI specification for the Manager service.
 servers:
   - url: http://localhost:{port}/techcv/api/v1
     description: Local development server
@@ -13,62 +12,93 @@ servers:
         default: '8080'
 tags:
   - name: Health
-    description: Endpoints that report service health
+    description: Service health endpoints
+  - name: Authentication
+    description: Firebase Authentication endpoints
 paths:
   /health:
     get:
       tags:
         - Health
       summary: Retrieve the API health status
-      operationId: checkHealth
+      operationId: getHealth
       responses:
         '200':
           description: Health information retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthSuccessResponse'
-              examples:
-                success:
-                  summary: Successful health check
-                  value:
-                    status: success
-                    data:
-                      status: ok
-                      checked_at: '2024-01-01T00:00:00Z'
+                $ref: '#/components/schemas/HealthResponse'
         '500':
           description: Unexpected server error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                error:
-                  summary: Error envelope
-                  value:
-                    status: error
-                    error:
-                      requestId: abc123
-                      code: internal_error
-                      message: unexpected server error
+  /auth/firebase/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a user after Firebase authentication
+      operationId: postAuthFirebaseRegister
+      responses:
+        '201':
+          description: Registration succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid Firebase token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Registration failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/firebase/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login with Firebase Authentication
+      operationId: postAuthFirebaseLogin
+      responses:
+        '200':
+          description: Login succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid Firebase token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Login failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
-    ResponseEnvelope:
-      type: object
-      required:
-        - status
-      properties:
-        status:
-          type: string
-          description: High-level result indicator
-        data:
-          description: Payload returned when the request succeeds
-          nullable: true
-        error:
-          $ref: '#/components/schemas/ErrorBody'
-        meta:
-          description: Additional metadata for the response
-          nullable: true
     ErrorDetail:
       type: object
       properties:
@@ -78,7 +108,7 @@ components:
           type: string
         message:
           type: string
-    ErrorBody:
+    ErrorResponse:
       type: object
       required:
         - requestId
@@ -87,24 +117,28 @@ components:
           type: string
         code:
           type: string
-        message:
-          type: string
         details:
           type: array
           items:
             $ref: '#/components/schemas/ErrorDetail'
-    ErrorResponse:
-      allOf:
-        - $ref: '#/components/schemas/ResponseEnvelope'
-        - type: object
-          properties:
-            status:
-              type: string
-              enum:
-                - error
-            error:
-              $ref: '#/components/schemas/ErrorBody'
-    HealthStatus:
+    AuthResponse:
+      type: object
+      required:
+        - userId
+        - firebaseUid
+        - email
+      properties:
+        userId:
+          type: string
+          format: uuid
+        firebaseUid:
+          type: string
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+    HealthResponse:
       type: object
       required:
         - status
@@ -112,19 +146,6 @@ components:
       properties:
         status:
           type: string
-          description: Health indicator value (e.g. ok)
         checked_at:
           type: string
           format: date-time
-          description: Timestamp when the check was performed in UTC
-    HealthSuccessResponse:
-      allOf:
-        - $ref: '#/components/schemas/ResponseEnvelope'
-        - type: object
-          properties:
-            status:
-              type: string
-              enum:
-                - success
-            data:
-              $ref: '#/components/schemas/HealthStatus'

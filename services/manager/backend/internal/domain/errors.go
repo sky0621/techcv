@@ -77,6 +77,25 @@ func NewInternal(code, message string, err error) *AppError {
 	}
 }
 
+// NewUnauthorized returns a new unauthorized error.
+func NewUnauthorized(code, message string, err error) *AppError {
+	return &AppError{
+		Code:       code,
+		Message:    message,
+		StatusCode: http.StatusUnauthorized,
+		Err:        err,
+	}
+}
+
+// NewConflict returns a new conflict error.
+func NewConflict(code, message string) *AppError {
+	return &AppError{
+		Code:       code,
+		Message:    message,
+		StatusCode: http.StatusConflict,
+	}
+}
+
 // IsAppError tests whether an error is an AppError.
 func IsAppError(err error) bool {
 	var target *AppError
