@@ -36,11 +36,11 @@ migrate: ## Apply schema changes to the local database using sqldef
 
 .PHONY: gen-sqlc
 gen-sqlc: ## Generate database access layer code with sqlc
-	$(SQLC) generate
+	go tool sqlc generate
 
 .PHONY: gen-api
 gen-api: ## Generate Go sources from OpenAPI specification
-	go tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config ./oapi-codegen.yaml ../openapi/openapi.yaml
+	go tool oapi-codegen --config ./oapi-codegen.yaml ../openapi/openapi.yaml
 
 # Formatting
 .PHONY: fmt
@@ -49,7 +49,7 @@ fmt: ## Run gofmt on Go files
 
 .PHONY: imports
 imports: ## Run goimports on Go files
-	go tool golang.org/x/tools/cmd/goimports -w $(shell find . -name '*.go' -not -path './vendor/*' -not -path './bin-tools/*' -not -path './.gomodcache/*')
+	go tool goimports -w $(shell find . -name '*.go' -not -path './vendor/*' -not -path './bin-tools/*' -not -path './.gomodcache/*')
 
 # Quality gates
 .PHONY: lint
