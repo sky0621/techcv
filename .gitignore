@@ -5,3 +5,9 @@ bin-tools/
 node_modules
 **/.gomodcache
 **/.cache/
+.env
+.env.sample
+**/.env
+**/.env.*
+!.env.sample
+!**/.env.sample
