@@ -13,7 +13,6 @@ import { DashboardPage } from '@/features/dashboard/pages/dashboard-page';
 import { CVEditorPage } from '@/features/cv/pages/cv-editor-page';
 import { CVPreviewPage } from '@/features/cv/pages/cv-preview-page';
 import { PublicCVViewPage } from '@/features/cv/pages/public-cv-view-page';
-import { PublicURLManagerPage } from '@/features/cv/pages/public-url-manager-page';
 import { NotFoundPage } from '@/router/not-found-page';
 
 const rootRoute = createRootRoute({
@@ -54,12 +53,6 @@ const cvPreviewRoute = createRoute({
   component: CVPreviewPage
 });
 
-const publicUrlManagerRoute = createRoute({
-  getParentRoute: () => protectedLayoutRoute,
-  path: 'settings/public-url',
-  component: PublicURLManagerPage
-});
-
 const publicCvRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'public/$publicId',
@@ -77,8 +70,7 @@ const routeTree = rootRoute.addChildren([
   protectedLayoutRoute.addChildren([
     dashboardRoute,
     cvEditorRoute,
-    cvPreviewRoute,
-    publicUrlManagerRoute
+    cvPreviewRoute
   ]),
   publicCvRoute,
   notFoundRoute

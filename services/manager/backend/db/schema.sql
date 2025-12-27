@@ -23,13 +23,3 @@ CREATE TABLE users (
   KEY idx_users_provider_id (provider_id),
   KEY idx_users_deleted_at (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE public_urls (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  url_key VARCHAR(64) NOT NULL,
-  is_active TINYINT(1) NOT NULL DEFAULT 1,
-  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-  PRIMARY KEY (id),
-  UNIQUE KEY idx_public_urls_url_key (url_key)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
