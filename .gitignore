@@ -5,6 +5,8 @@ bin-tools/
 node_modules
 **/.gomodcache
 **/.cache/
+.DS_Store
+**/.DS_Store
 .env
 .env.sample
 **/.env

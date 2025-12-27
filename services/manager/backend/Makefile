@@ -54,8 +54,7 @@ imports: ## Run goimports on Go files
 # Quality gates
 .PHONY: lint
 lint: ## Run golangci-lint
-	GOCACHE=$(CURDIR)/.cache GOLANGCI_LINT_CACHE=$(CURDIR)/.cache/golangci-lint $(CURDIR)/bin-tools/golangci-lint run
-	rm -rf $(CURDIR)/.cache
+	go tool golangci-lint run
 
 .PHONY: check
 check:
