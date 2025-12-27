@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"net/http"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -20,6 +21,11 @@ type FirebaseTokenVerifier interface {
 func FirebaseAuth(verifier FirebaseTokenVerifier) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			// Let preflight requests pass through without authentication.
+			if c.Request().Method == http.MethodOptions {
+				return next(c)
+			}
+
 			token := bearerToken(c.Request().Header.Get(echo.HeaderAuthorization))
 			if token == "" {
 				return domain.NewUnauthorized(domain.ErrorCodeInvalidToken, "Authorizationヘッダーが不足しています", nil)

@@ -121,7 +121,15 @@ func (s *Service) Login(ctx context.Context, firebaseUID string) (*AuthResult, e
 	existing, err := s.repo.FindByFirebaseUID(ctx, uid)
 	if err != nil {
 		if isNotFound(err) {
-			return nil, err
+			now := s.clock.Now()
+			entity, createErr := user.NewUserFromFirebase(toDomainFirebaseUser(firebaseUser), now, s.generateID)
+			if createErr != nil {
+				return nil, wrapLoginError(createErr)
+			}
+			if createErr := s.repo.Create(ctx, entity); createErr != nil {
+				return nil, wrapLoginError(createErr)
+			}
+			return toAuthResult(entity), nil
 		}
 		return nil, wrapLoginError(err)
 	}
