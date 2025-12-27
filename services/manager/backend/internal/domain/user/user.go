@@ -279,13 +279,15 @@ func normalizeOptionalTime(value *time.Time) *time.Time {
 	return &ts
 }
 
+const maxProviderIDLength = 50
+
 func validateProviderID(raw string) (string, error) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
 		detail := domain.ErrorDetail{Field: "providerId", Code: domain.ErrorCodeValidationError, Message: "provider_idは必須です"}
 		return "", domain.NewValidation(domain.ErrorCodeValidationError, "プロバイダー情報が不足しています").WithDetails(detail)
 	}
-	if len(trimmed) > 50 {
+	if len(trimmed) > maxProviderIDLength {
 		detail := domain.ErrorDetail{Field: "providerId", Code: domain.ErrorCodeValidationError, Message: "provider_idは50文字以内で入力してください"}
 		return "", domain.NewValidation(domain.ErrorCodeValidationError, "プロバイダー情報が不正です").WithDetails(detail)
 	}

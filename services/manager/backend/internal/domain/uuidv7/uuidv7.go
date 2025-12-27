@@ -37,11 +37,18 @@ func NewString() (string, error) {
 		return "", errors.New(unixMilliNegativeMessage)
 	}
 	timestamp := uint64(tsMillis)
+	// Fixed-size array ensures safe indexing; nolint added to silence gosec false positive.
+	//nolint:gosec
 	uuid[0] = byte(timestamp >> timestampByte0Shift)
+	//nolint:gosec
 	uuid[1] = byte(timestamp >> timestampByte1Shift)
+	//nolint:gosec
 	uuid[2] = byte(timestamp >> timestampByte2Shift)
+	//nolint:gosec
 	uuid[3] = byte(timestamp >> timestampByte3Shift)
+	//nolint:gosec
 	uuid[4] = byte(timestamp >> timestampByte4Shift)
+	//nolint:gosec
 	uuid[5] = byte(timestamp)
 
 	if _, err := rand.Read(uuid[6:]); err != nil {

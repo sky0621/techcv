@@ -1,3 +1,4 @@
+// Package firebase provides Firebase Admin SDK-backed authentication utilities.
 package firebase
 
 import (

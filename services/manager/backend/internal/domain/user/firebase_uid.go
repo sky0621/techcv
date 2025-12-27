@@ -11,6 +11,8 @@ type FirebaseUID struct {
 	value string
 }
 
+const maxFirebaseUIDLength = 128
+
 // NewFirebaseUID validates and constructs a FirebaseUID value object.
 func NewFirebaseUID(raw string) (FirebaseUID, error) {
 	trimmed := strings.TrimSpace(raw)
@@ -19,7 +21,7 @@ func NewFirebaseUID(raw string) (FirebaseUID, error) {
 		return FirebaseUID{}, domain.NewValidation(domain.ErrorCodeValidationError, "Firebase UIDが無効です").WithDetails(detail)
 	}
 
-	if len(trimmed) > 128 {
+	if len(trimmed) > maxFirebaseUIDLength {
 		detail.Message = "Firebase UIDは128文字以内で入力してください"
 		return FirebaseUID{}, domain.NewValidation(domain.ErrorCodeValidationError, "Firebase UIDが無効です").WithDetails(detail)
 	}
