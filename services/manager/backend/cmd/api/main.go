@@ -34,7 +34,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log := logger.New(cfg.App.Environment, cfg.App.LogLevel)
+	log := logger.New(cfg.App.LogLevel)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

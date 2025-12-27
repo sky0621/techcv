@@ -8,19 +8,9 @@ import (
 )
 
 // New returns a slog logger configured for the given environment and level.
-func New(env, level string) *slog.Logger {
-	env = strings.ToLower(env)
+func New(level string) *slog.Logger {
 	opts := &slog.HandlerOptions{Level: parseLevel(level)}
-
-	var handler slog.Handler
-	switch env {
-	case "production", "prod":
-		handler = slog.NewJSONHandler(os.Stdout, opts)
-	default:
-		handler = slog.NewTextHandler(os.Stdout, opts)
-	}
-
-	return slog.New(handler)
+	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
 }
 
 // WithRequestID enriches the logger with a request identifier when present.
