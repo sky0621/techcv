@@ -18,7 +18,7 @@ type ErrorDetail struct {
 }
 
 // Success returns a success response with the provided HTTP status code.
-func Success(c echo.Context, status int, data interface{}) error {
+func Success(c echo.Context, status int, data any) error {
 	return c.JSON(status, data)
 }
 

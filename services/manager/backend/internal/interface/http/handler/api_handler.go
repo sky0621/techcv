@@ -51,7 +51,7 @@ func (h *Handler) GetHealth(c echo.Context) error {
 		return err
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"status":     status.Status,
 		"checked_at": status.CheckedAt,
 	}
