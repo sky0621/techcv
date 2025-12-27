@@ -3,6 +3,8 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Provider as JotaiProvider } from 'jotai';
 import { PropsWithChildren } from 'react';
 
+import { AuthInitializer } from '@/features/auth/components/auth-initializer';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -17,7 +19,7 @@ const queryClient = new QueryClient({
 export const AppProviders = ({ children }: PropsWithChildren): JSX.Element => (
   <JotaiProvider>
     <QueryClientProvider client={queryClient}>
-      {children}
+      <AuthInitializer>{children}</AuthInitializer>
       <ReactQueryDevtools initialIsOpen={false} position="bottom-right" />
     </QueryClientProvider>
   </JotaiProvider>

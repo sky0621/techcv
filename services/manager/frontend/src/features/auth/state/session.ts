@@ -12,10 +12,13 @@ export type SessionStatus = 'authenticated' | 'unauthenticated' | 'loading';
 export interface SessionState {
   status: SessionStatus;
   user?: AuthUser;
+  idToken?: string;
 }
 
 export const sessionAtom = atom<SessionState>({
-  status: 'unauthenticated'
+  status: 'loading'
 });
 
-export const isAuthenticatedAtom = atom((get) => get(sessionAtom).status === 'authenticated');
+export const isAuthenticatedAtom = atom(
+  (get) => get(sessionAtom).status === 'authenticated' && Boolean(get(sessionAtom).idToken)
+);

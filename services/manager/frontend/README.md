@@ -11,6 +11,19 @@ npm run dev
 
 The development server runs on <http://localhost:5173>. Override the backend API endpoint with `VITE_API_BASE_URL` (default: `http://localhost:8080`).
 
+## Environment variables
+
+Copy `.env.sample` to `.env` and set your Firebase web app config values:
+
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- Optional: `VITE_FIREBASE_MEASUREMENT_ID`
+
+`VITE_API_BASE_URL` should point at the manager backend (defaults to `http://localhost:8080`).
+
 ## Available Scripts
 
 - `npm run dev`: start the Vite dev server
