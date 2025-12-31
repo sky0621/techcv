@@ -1,6 +1,7 @@
-// Package domain contains shared application domain types.
+// Package domain はアプリケーション全体で共有するドメイン型とエラー定義を提供します。
 package domain
 
+// ErrorCodeInvalidEmailFormat などのエラーコードを定義します。
 const (
 	ErrorCodeInvalidEmailFormat   = "INVALID_EMAIL_FORMAT"
 	ErrorCodeInvalidPassword      = "INVALID_PASSWORD"

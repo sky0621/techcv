@@ -1,4 +1,3 @@
-// Package health provides use cases for service health reporting.
 package health
 
 import (

@@ -1,4 +1,3 @@
-// Package handler exposes HTTP handlers that satisfy the OpenAPI contract.
 package handler
 
 import (

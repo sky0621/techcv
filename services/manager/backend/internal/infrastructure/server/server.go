@@ -1,4 +1,3 @@
-// Package server wraps the HTTP server and graceful shutdown logic.
 package server
 
 import (

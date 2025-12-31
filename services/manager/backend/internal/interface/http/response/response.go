@@ -1,4 +1,3 @@
-// Package response contains helpers for shaping HTTP API responses.
 package response
 
 import "github.com/labstack/echo/v4"

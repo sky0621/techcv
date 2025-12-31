@@ -1,3 +1,4 @@
+// Package mysql はmanagerサービス向けのMySQL実装を提供します。
 package mysql
 
 import (

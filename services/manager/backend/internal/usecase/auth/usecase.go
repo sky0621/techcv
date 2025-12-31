@@ -1,4 +1,3 @@
-// Package auth provides Firebase-backed authentication use cases.
 package auth
 
 import (

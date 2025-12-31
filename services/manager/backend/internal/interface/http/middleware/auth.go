@@ -10,8 +10,6 @@ import (
 	"github.com/sky0621/techcv/manager/backend/internal/domain"
 )
 
-const firebaseUIDContextKey = "firebase_uid"
-
 // FirebaseTokenVerifier matches the use case interface while avoiding echo dependency in the inner layer.
 type FirebaseTokenVerifier interface {
 	VerifyIDToken(ctx context.Context, idToken string) (string, error)
@@ -40,19 +38,6 @@ func FirebaseAuth(verifier FirebaseTokenVerifier) echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
-}
-
-// FirebaseUIDFromContext fetches the Firebase UID assigned by the authentication middleware.
-func FirebaseUIDFromContext(c echo.Context) (string, bool) {
-	if c == nil {
-		return "", false
-	}
-	val := c.Get(firebaseUIDContextKey)
-	uid, ok := val.(string)
-	if !ok || strings.TrimSpace(uid) == "" {
-		return "", false
-	}
-	return uid, true
 }
 
 func bearerToken(header string) string {

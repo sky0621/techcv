@@ -1,4 +1,3 @@
-// Package clock provides time abstractions for the application.
 package clock
 
 import (

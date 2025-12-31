@@ -1,4 +1,3 @@
-// Package mysql provides MySQL infrastructure components for the manager service.
 package mysql
 
 import (
