@@ -1,67 +1,31 @@
-APP_NAME=api
-APP_PATH=./cmd/api
-COMPOSE ?= docker compose
-SQLC ?= sqlc
+.PHONY: run test fmt vet tidy healthcheck
 
-.PHONY: help
-help:
-	@grep -E '^[a-zA-Z_-]+:.*?## ' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "%-16s %s\n", $$1, $$2}'
+APP_ENV ?= local
+APP_PORT ?= 8080
+SQLITE_PATH ?= ./tmp/manager.db
+GOCACHE ?= $(CURDIR)/.cache/go-build
+HEALTHCHECK_URL ?= http://127.0.0.1:$(APP_PORT)/health
 
-# Local development
-.PHONY: run
-run: ## Run the application in development mode
-	go run $(APP_PATH)
+run:
+	mkdir -p "$(GOCACHE)"
+	APP_ENV=$(APP_ENV) APP_PORT=$(APP_PORT) SQLITE_PATH=$(SQLITE_PATH) GOCACHE=$(GOCACHE) go run ./cmd/api
 
-.PHONY: build
-build: ## Build the application binary
-	go build -o bin/$(APP_NAME) $(APP_PATH)
+test:
+	mkdir -p "$(GOCACHE)"
+	GOCACHE=$(GOCACHE) go test ./...
 
-.PHONY: test
-test: ## Run unit tests
-	go test ./...
+fmt:
+	gofmt -w $$(find . -name '*.go' -type f)
 
-# Dependency management
-.PHONY: tidy
-tidy: ## Update go modules
-	go mod tidy
+vet:
+	mkdir -p "$(GOCACHE)"
+	GOCACHE=$(GOCACHE) go vet ./...
 
-.PHONY: download
-download: ## Update go modules
-	go mod download
+tidy:
+	mkdir -p "$(GOCACHE)"
+	GOCACHE=$(GOCACHE) go mod tidy
 
-# Database and code generation
-.PHONY: migrate
-migrate: ## Apply schema changes to the local database using sqldef
-	$(COMPOSE) run --rm sqldef
-
-.PHONY: gen-sqlc
-gen-sqlc: ## Generate database access layer code with sqlc
-	go tool sqlc generate
-
-.PHONY: gen-api
-gen-api: ## Generate Go sources from OpenAPI specification
-	go tool oapi-codegen --config ./oapi-codegen.yaml ../openapi/openapi.yaml
-
-# Formatting
-.PHONY: fmt
-fmt: ## Run gofmt on Go files
-	go fmt ./...
-
-.PHONY: imports
-imports: ## Run goimports on Go files
-	go tool goimports -w $(shell find . -name '*.go' -not -path './vendor/*' -not -path './bin-tools/*' -not -path './.gomodcache/*')
-
-# Quality gates
-.PHONY: lint
-lint: ## Run golangci-lint
-	go tool golangci-lint run
-
-.PHONY: check
-check:
-	make tidy
-	make download
-	make fmt
-	make imports
-	make lint
-	make build
-	make test
+healthcheck:
+	@body=$$(curl -fsS "$(HEALTHCHECK_URL)"); \
+	echo "$$body"; \
+	echo "$$body" | grep -q '"status":"ok"' || (echo "healthcheck failed: status is not ok" >&2; exit 1)

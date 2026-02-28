@@ -1,5 +1,0 @@
-url: http://localhost:{port}/techcv/api/v1
-description: Local development server
-variables:
-  port:
-    default: "8080"
