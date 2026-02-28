@@ -12,10 +12,12 @@ import (
 
 	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/clock"
 	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/config"
+	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/id"
 	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/sqlite"
 	"github.com/sky0621/techcv/services/manager/backend/internal/interface/http/handler"
 	appserver "github.com/sky0621/techcv/services/manager/backend/internal/interface/http/server"
 	healthusecase "github.com/sky0621/techcv/services/manager/backend/internal/usecase/health"
+	profileregister "github.com/sky0621/techcv/services/manager/backend/internal/usecase/profile/register"
 )
 
 func main() {
@@ -31,11 +33,30 @@ func main() {
 		os.Exit(1)
 	}
 
+	db, err := sqlite.Open(cfg.SQLitePath)
+	if err != nil {
+		slog.Error("failed to open sqlite", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			slog.Error("failed to close sqlite", "error", closeErr)
+		}
+	}()
+
+	if err := sqlite.EnsureSchema(context.Background(), db); err != nil {
+		slog.Error("failed to ensure sqlite schema", "error", err)
+		os.Exit(1)
+	}
+
 	healthService := healthusecase.NewService(clock.NewSystemClock())
 	healthHandler := handler.NewHealthHandler(healthService)
+	profileService := profileregister.NewService(sqlite.NewProfileRepository(db), id.NewIncrementalGenerator())
+	profileHandler := handler.NewProfileHandler(profileService)
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", healthHandler)
+	mux.Handle("POST /profiles", profileHandler)
 
 	server := appserver.New(cfg, mux)
 

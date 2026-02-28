@@ -8,7 +8,7 @@ CV登録・編集機能を提供するサービスのバックエンド（Golang
 Golang（ローカル確認: `go1.25.6`）
 
 ## データ永続化
-SQLite3（開発用に `SQLITE_PATH` のファイル作成まで実装）
+SQLite3（`POST /profiles` は `SQLITE_PATH` のDBへ永続化）
 
 ## ディレクトリ構成（最小雛形）
 ```text
@@ -54,3 +54,12 @@ go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
 ```bash
 make healthcheck
 ```
+
+名前とニックネームの登録は以下で確認できます。
+```bash
+curl -X POST http://localhost:8080/profiles \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Taro","nickname":"taro-dev"}'
+```
+
+登録データは SQLite の `profiles` テーブルに保存されます。
