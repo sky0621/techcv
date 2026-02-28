@@ -21,6 +21,11 @@ import (
 func main() {
 	cfg := config.Load()
 
+	if err := cfg.Validate(); err != nil {
+		slog.Error("invalid config", "error", err)
+		os.Exit(1)
+	}
+
 	if err := sqlite.Prepare(cfg.SQLitePath); err != nil {
 		slog.Error("failed to prepare sqlite file", "error", err)
 		os.Exit(1)

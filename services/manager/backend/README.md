@@ -39,7 +39,14 @@ make healthcheck # /health の status=ok を確認（API起動後）
 make test  # 単体テスト
 make fmt   # gofmt
 make vet   # go vet
+make lint  # golangci-lint
 make tidy  # go.mod/go.sum整理
+make check # fmt, vet, tidy, lint, test を順に実行
+```
+
+`make lint` の実行には `golangci-lint` が必要です。未導入の場合:
+```bash
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
 ```
 
 ## 動作確認
@@ -47,5 +54,3 @@ make tidy  # go.mod/go.sum整理
 ```bash
 make healthcheck
 ```
-
-

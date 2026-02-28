@@ -1,9 +1,10 @@
-.PHONY: run test fmt vet tidy healthcheck
+.PHONY: run test fmt vet tidy lint check healthcheck
 
 APP_ENV ?= local
 APP_PORT ?= 8080
 SQLITE_PATH ?= ./tmp/manager.db
 GOCACHE ?= $(CURDIR)/.cache/go-build
+GOLANGCI_LINT_CACHE ?= $(CURDIR)/.cache/golangci-lint
 HEALTHCHECK_URL ?= http://127.0.0.1:$(APP_PORT)/health
 
 run:
@@ -24,6 +25,18 @@ vet:
 tidy:
 	mkdir -p "$(GOCACHE)"
 	GOCACHE=$(GOCACHE) go mod tidy
+
+lint:
+	@command -v golangci-lint >/dev/null 2>&1 || (echo "golangci-lint not found. Install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8" >&2; exit 1)
+	mkdir -p "$(GOCACHE)" "$(GOLANGCI_LINT_CACHE)"
+	GOCACHE=$(GOCACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_LINT_CACHE) golangci-lint run ./...
+
+check:
+	$(MAKE) fmt
+	$(MAKE) vet
+	$(MAKE) tidy
+	$(MAKE) lint
+	$(MAKE) test
 
 healthcheck:
 	@body=$$(curl -fsS "$(HEALTHCHECK_URL)"); \

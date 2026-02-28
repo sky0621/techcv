@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go Backend Bootstrap"
+  short_description: "Goバックエンド雛形とhealthcheckを整備"
+  default_prompt: "$go-backend-bootstrap を使って、最小の Go バックエンド雛形と make healthcheck を作成して。"

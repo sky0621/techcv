@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go Best Practices"
+  short_description: "Goの設計・実装・テスト・運用の実践ベストプラクティス"
+  default_prompt: "$go-best-practices を使って、Goの実装方針と改善提案をベストプラクティスに沿って示して。"

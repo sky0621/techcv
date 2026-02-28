@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manager Backend Check Agent"
+  short_description: "manager/backendでmake checkを自動実行する"
+  default_prompt: "$manager-backend-check-agent を使って services/manager/backend で make check を実行して結果を報告して。"

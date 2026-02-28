@@ -1,6 +1,10 @@
 package config
 
-import "os"
+import (
+	"fmt"
+	"os"
+	"strconv"
+)
 
 type Config struct {
 	Env        string
@@ -18,6 +22,17 @@ func Load() Config {
 
 func (c Config) Addr() string {
 	return ":" + c.Port
+}
+
+func (c Config) Validate() error {
+	port, err := strconv.Atoi(c.Port)
+	if err != nil {
+		return fmt.Errorf("APP_PORT must be numeric: %w", err)
+	}
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("APP_PORT must be in range 1-65535: %d", port)
+	}
+	return nil
 }
 
 func envOrDefault(key, fallback string) string {
