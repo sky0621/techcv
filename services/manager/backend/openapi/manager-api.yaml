@@ -1,0 +1,98 @@
+openapi: 3.0.3
+info:
+  title: TechCV Manager API
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /profiles:
+    post:
+      summary: Register profile
+      operationId: createProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterProfileRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - time
+      properties:
+        status:
+          type: string
+          example: ok
+        time:
+          type: string
+          format: date-time
+    RegisterProfileRequest:
+      type: object
+      required:
+        - name
+        - nickname
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          example: Alice
+        nickname:
+          type: string
+          example: ali
+    Profile:
+      type: object
+      required:
+        - id
+        - name
+        - nickname
+      properties:
+        id:
+          type: string
+          example: profile_1
+        name:
+          type: string
+          example: Alice
+        nickname:
+          type: string
+          example: ali
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: invalid request body

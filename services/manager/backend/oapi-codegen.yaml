@@ -1,0 +1,4 @@
+package: openapigen
+generate:
+  models: true
+output: internal/interface/http/openapi/gen/models.gen.go

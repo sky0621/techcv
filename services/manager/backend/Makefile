@@ -1,4 +1,4 @@
-.PHONY: run test fmt vet tidy lint check healthcheck sqlc-generate db-migrate
+.PHONY: run test fmt vet tidy lint check healthcheck sqlc-generate openapi-generate db-migrate
 
 APP_ENV ?= local
 APP_PORT ?= 8080
@@ -41,6 +41,11 @@ check:
 sqlc-generate:
 	@command -v sqlc >/dev/null 2>&1 || (echo "sqlc not found. Install: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.24.0" >&2; exit 1)
 	sqlc generate
+
+openapi-generate:
+	mkdir -p "$(GOCACHE)"
+	mkdir -p internal/interface/http/openapi/gen
+	GOCACHE=$(GOCACHE) go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen -config oapi-codegen.yaml openapi/manager-api.yaml
 
 db-migrate:
 	@if [ "$(SQLITE_PATH)" = ":memory:" ]; then \

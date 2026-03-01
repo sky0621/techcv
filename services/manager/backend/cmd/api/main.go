@@ -10,11 +10,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/clock"
 	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/config"
 	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/id"
 	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/sqlite"
 	"github.com/sky0621/techcv/services/manager/backend/internal/interface/http/handler"
+	apispec "github.com/sky0621/techcv/services/manager/backend/internal/interface/http/openapi"
 	appserver "github.com/sky0621/techcv/services/manager/backend/internal/interface/http/server"
 	healthusecase "github.com/sky0621/techcv/services/manager/backend/internal/usecase/health"
 	profileregister "github.com/sky0621/techcv/services/manager/backend/internal/usecase/profile/register"
@@ -25,6 +27,10 @@ func main() {
 
 	if err := cfg.Validate(); err != nil {
 		slog.Error("invalid config", "error", err)
+		os.Exit(1)
+	}
+	if err := apispec.LoadAndValidate("openapi/manager-api.yaml"); err != nil {
+		slog.Error("invalid OpenAPI spec", "error", err)
 		os.Exit(1)
 	}
 
@@ -49,11 +55,13 @@ func main() {
 	profileService := profileregister.NewService(sqlite.NewProfileRepository(db), id.NewIncrementalGenerator())
 	profileHandler := handler.NewProfileHandler(profileService)
 
-	mux := http.NewServeMux()
-	mux.Handle("GET /health", healthHandler)
-	mux.Handle("POST /profiles", profileHandler)
+	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = true
+	e.GET("/health", echo.WrapHandler(healthHandler))
+	e.POST("/profiles", echo.WrapHandler(profileHandler))
 
-	server := appserver.New(cfg, mux)
+	server := appserver.New(cfg, e)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
