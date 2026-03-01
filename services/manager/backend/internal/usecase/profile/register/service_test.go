@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/sky0621/techcv/services/manager/backend/internal/domain"
+	"github.com/sky0621/techcv/services/manager/backend/internal/domain/model"
 )
 
 type fixedIDGen struct {
@@ -18,10 +18,10 @@ func (f fixedIDGen) NewID() string {
 
 type stubProfileRepository struct {
 	saveErr error
-	saved   []domain.Profile
+	saved   []model.Profile
 }
 
-func (s *stubProfileRepository) Save(_ context.Context, profile domain.Profile) error {
+func (s *stubProfileRepository) Save(_ context.Context, profile model.Profile) error {
 	if s.saveErr != nil {
 		return s.saveErr
 	}

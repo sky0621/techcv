@@ -1,0 +1,6 @@
+CREATE TABLE profiles (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  nickname TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+);

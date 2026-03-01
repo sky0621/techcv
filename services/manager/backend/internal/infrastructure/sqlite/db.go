@@ -1,7 +1,6 @@
 package sqlite
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 
@@ -20,20 +19,4 @@ func Open(path string) (*sql.DB, error) {
 	}
 
 	return db, nil
-}
-
-func EnsureSchema(ctx context.Context, db *sql.DB) error {
-	const schema = `
-CREATE TABLE IF NOT EXISTS profiles (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  nickname TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
-);
-`
-
-	if _, err := db.ExecContext(ctx, schema); err != nil {
-		return fmt.Errorf("ensure schema: %w", err)
-	}
-	return nil
 }

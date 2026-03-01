@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/sky0621/techcv/services/manager/backend/internal/domain"
+	"github.com/sky0621/techcv/services/manager/backend/internal/domain/model"
 )
 
 type Clock interface {
@@ -19,8 +19,8 @@ func NewService(clock Clock) Service {
 	return Service{clock: clock}
 }
 
-func (s Service) Check(_ context.Context) domain.HealthStatus {
-	return domain.HealthStatus{
+func (s Service) Check(_ context.Context) model.HealthStatus {
+	return model.HealthStatus{
 		Service: "manager-backend",
 		Status:  "ok",
 		Time:    s.clock.Now().UTC().Format(time.RFC3339),

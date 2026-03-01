@@ -6,17 +6,17 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/sky0621/techcv/services/manager/backend/internal/domain"
+	"github.com/sky0621/techcv/services/manager/backend/internal/domain/model"
 )
 
 type HealthHandler struct {
 	healthService interface {
-		Check(context.Context) domain.HealthStatus
+		Check(context.Context) model.HealthStatus
 	}
 }
 
 func NewHealthHandler(healthService interface {
-	Check(context.Context) domain.HealthStatus
+	Check(context.Context) model.HealthStatus
 }) HealthHandler {
 	return HealthHandler{healthService: healthService}
 }

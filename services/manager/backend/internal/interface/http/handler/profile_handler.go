@@ -8,12 +8,12 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/sky0621/techcv/services/manager/backend/internal/domain"
+	"github.com/sky0621/techcv/services/manager/backend/internal/domain/model"
 	profileregister "github.com/sky0621/techcv/services/manager/backend/internal/usecase/profile/register"
 )
 
 type profileRegistrar interface {
-	Register(ctx context.Context, name, nickname string) (domain.Profile, error)
+	Register(ctx context.Context, name, nickname string) (model.Profile, error)
 }
 
 type ProfileHandler struct {

@@ -1,4 +1,4 @@
-.PHONY: run test fmt vet tidy lint check healthcheck
+.PHONY: run test fmt vet tidy lint check healthcheck sqlc-generate db-migrate
 
 APP_ENV ?= local
 APP_PORT ?= 8080
@@ -7,7 +7,7 @@ GOCACHE ?= $(CURDIR)/.cache/go-build
 GOLANGCI_LINT_CACHE ?= $(CURDIR)/.cache/golangci-lint
 HEALTHCHECK_URL ?= http://127.0.0.1:$(APP_PORT)/health
 
-run:
+run: db-migrate
 	mkdir -p "$(GOCACHE)"
 	APP_ENV=$(APP_ENV) APP_PORT=$(APP_PORT) SQLITE_PATH=$(SQLITE_PATH) GOCACHE=$(GOCACHE) go run ./cmd/api
 
@@ -37,6 +37,20 @@ check:
 	$(MAKE) tidy
 	$(MAKE) lint
 	$(MAKE) test
+
+sqlc-generate:
+	@command -v sqlc >/dev/null 2>&1 || (echo "sqlc not found. Install: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.24.0" >&2; exit 1)
+	sqlc generate
+
+db-migrate:
+	@if [ "$(SQLITE_PATH)" = ":memory:" ]; then \
+		echo "skip db-migrate for SQLITE_PATH=:memory:"; \
+		exit 0; \
+	fi
+	@command -v sqlite3def >/dev/null 2>&1 || (echo "sqlite3def not found. Install: go install github.com/sqldef/sqldef/cmd/sqlite3def@latest" >&2; exit 1)
+	mkdir -p "$(dir $(SQLITE_PATH))"
+	touch "$(SQLITE_PATH)"
+	sqlite3def "$(SQLITE_PATH)" --file sql/schema.sql
 
 healthcheck:
 	@body=$$(curl -fsS "$(HEALTHCHECK_URL)"); \

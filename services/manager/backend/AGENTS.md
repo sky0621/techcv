@@ -2,13 +2,17 @@
 CV登録・編集機能を提供するサービスのバックエンド（Golang）のソースを管理するディレクトリです。
 
 ## アーキテクチャ
-ヘキサゴナル・アーキテクチャを採用しています。
+クリーン・アーキテクチャを採用しています。
 
 ## 採用言語
 Golang（ローカル確認: `go1.25.6`）
 
 ## データ永続化
 SQLite3（`POST /profiles` は `SQLITE_PATH` のDBへ永続化）
+
+## DB関連ライブラリ
+- データベースアクセス: `sqlc`（生成コード）
+- データベースマイグレーション: `sqldef`（`sqlite3def`）
 
 ## ディレクトリ構成（最小雛形）
 ```text
@@ -28,6 +32,9 @@ backend/
 ```bash
 cd services/manager/backend
 cp .env.sample .env
+go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.24.0
+go install github.com/sqldef/sqldef/cmd/sqlite3def@latest
+make sqlc-generate
 go test ./...
 make run
 ```
@@ -35,6 +42,8 @@ make run
 ## 開発コマンド
 ```bash
 make run   # API起動
+make db-migrate # sqldefでスキーマ反映
+make sqlc-generate # sqlc生成コード更新
 make healthcheck # /health の status=ok を確認（API起動後）
 make test  # 単体テスト
 make fmt   # gofmt
@@ -54,6 +63,8 @@ go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
 ```bash
 make healthcheck
 ```
+
+`make run` は起動前に `make db-migrate` を実行します。
 
 名前とニックネームの登録は以下で確認できます。
 ```bash

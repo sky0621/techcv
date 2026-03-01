@@ -44,11 +44,6 @@ func main() {
 		}
 	}()
 
-	if err := sqlite.EnsureSchema(context.Background(), db); err != nil {
-		slog.Error("failed to ensure sqlite schema", "error", err)
-		os.Exit(1)
-	}
-
 	healthService := healthusecase.NewService(clock.NewSystemClock())
 	healthHandler := handler.NewHealthHandler(healthService)
 	profileService := profileregister.NewService(sqlite.NewProfileRepository(db), id.NewIncrementalGenerator())

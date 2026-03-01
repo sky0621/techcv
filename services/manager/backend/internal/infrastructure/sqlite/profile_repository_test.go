@@ -2,9 +2,11 @@ package sqlite
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
-	"github.com/sky0621/techcv/services/manager/backend/internal/domain"
+	"github.com/sky0621/techcv/services/manager/backend/internal/domain/model"
 )
 
 func TestProfileRepository_Save(t *testing.T) {
@@ -18,12 +20,18 @@ func TestProfileRepository_Save(t *testing.T) {
 		_ = db.Close()
 	})
 
-	if err := EnsureSchema(context.Background(), db); err != nil {
-		t.Fatalf("EnsureSchema() error = %v", err)
+	schemaPath := filepath.Join("..", "..", "..", "sql", "schema.sql")
+	schemaSQL, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%q) error = %v", schemaPath, err)
+	}
+
+	if _, err := db.ExecContext(context.Background(), string(schemaSQL)); err != nil {
+		t.Fatalf("ExecContext(schema) error = %v", err)
 	}
 
 	repo := NewProfileRepository(db)
-	profile := domain.Profile{
+	profile := model.Profile{
 		ID:       "profile_1",
 		Name:     "Alice",
 		Nickname: "ali",
@@ -33,7 +41,7 @@ func TestProfileRepository_Save(t *testing.T) {
 		t.Fatalf("Save() error = %v", err)
 	}
 
-	var got domain.Profile
+	var got model.Profile
 	row := db.QueryRowContext(context.Background(), `SELECT id, name, nickname FROM profiles WHERE id = ?`, profile.ID)
 	if err := row.Scan(&got.ID, &got.Name, &got.Nickname); err != nil {
 		t.Fatalf("QueryRow().Scan() error = %v", err)

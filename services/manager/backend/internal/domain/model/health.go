@@ -1,4 +1,4 @@
-package domain
+package model
 
 // HealthStatus is a simple domain object for service liveness.
 type HealthStatus struct {
