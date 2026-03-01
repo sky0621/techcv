@@ -11,12 +11,14 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	oapimiddleware "github.com/oapi-codegen/echo-middleware"
 	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/clock"
 	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/config"
 	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/id"
 	"github.com/sky0621/techcv/services/manager/backend/internal/infrastructure/sqlite"
 	"github.com/sky0621/techcv/services/manager/backend/internal/interface/http/handler"
 	apispec "github.com/sky0621/techcv/services/manager/backend/internal/interface/http/openapi"
+	openapigen "github.com/sky0621/techcv/services/manager/backend/internal/interface/http/openapi/gen"
 	appserver "github.com/sky0621/techcv/services/manager/backend/internal/interface/http/server"
 	healthusecase "github.com/sky0621/techcv/services/manager/backend/internal/usecase/health"
 	profileregister "github.com/sky0621/techcv/services/manager/backend/internal/usecase/profile/register"
@@ -53,13 +55,22 @@ func main() {
 	healthService := healthusecase.NewService(clock.NewSystemClock())
 	healthHandler := handler.NewHealthHandler(healthService)
 	profileService := profileregister.NewService(sqlite.NewProfileRepository(db), id.NewIncrementalGenerator())
-	profileHandler := handler.NewProfileHandler(profileService)
 
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
 	e.GET("/health", echo.WrapHandler(healthHandler))
-	e.POST("/profiles", echo.WrapHandler(profileHandler))
+
+	swagger, err := openapigen.GetSwagger()
+	if err != nil {
+		slog.Error("failed to get swagger", "error", err)
+		return
+	}
+	managerGroup := e.Group("/manager", oapimiddleware.OapiRequestValidator(swagger))
+	openapigen.RegisterHandlers(
+		managerGroup,
+		openapigen.NewStrictHandler(apispec.NewStrictServer(profileService), nil),
+	)
 
 	server := appserver.New(cfg, e)
 

@@ -1,4 +1,9 @@
 package: openapigen
 generate:
   models: true
+  echo-server: true
+  strict-server: true
+  embedded-spec: true
 output: internal/interface/http/openapi/gen/models.gen.go
+output-options:
+  nullable-type: true
